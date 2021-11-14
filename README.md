@@ -16,3 +16,16 @@ We will write our own http server as the option 9 in the handout. It should:
 * support http 2 over TCP if time allows.
 
 We will implement our project using golang.
+
+## Read
+
+### Start
+
+* https://www.linode.com/docs/guides/developing-udp-and-tcp-clients-and-servers-in-go/
+* https://gist.github.com/jschaf/93f37aedb5327c54cb356b2f1f0427e3
+* https://github.com/MohamedBassem/servgo
+
+### Project Structure
+
+* https://levelup.gitconnected.com/a-practical-approach-to-structuring-go-applications-7f77d7f9c189
+* https://qvault.io/golang/golang-project-structure/
