@@ -1,3 +1,3 @@
 module github.com/liangLouise/http_server
 
-go 1.17
+go 1.16

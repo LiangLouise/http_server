@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"net"
 	"os"
-	"strings"
+
+	"github.com/liangLouise/http_server/pkg/server"
 )
 
 func main() {
@@ -16,34 +15,11 @@ func main() {
 		return
 	}
 
-	port := ":" + args[1]
-	l, err := net.Listen("tcp", port)
+	s, err := server.MakeServer("", args[1], server.HTTP_1_1)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Printf("Error: %s", err)
 	}
 
-	for {
-		c, err := l.Accept()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+	s.ListenRequest()
 
-		netData, err := bufio.NewReader(c).ReadString('\n')
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		if strings.TrimSpace(netData) == "STOP" {
-			fmt.Println("Exiting TCP server!")
-			return
-		}
-
-		fmt.Fprintf(c, "HTTP/1.1 200 OK\r\n"+
-			"Content-Type: text/html; charset=utf-8\r\n"+
-			"Content-Length: 20\r\n"+
-			"\r\n"+
-			"<h1>hello world</h1>")
-	}
 }
