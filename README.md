@@ -30,3 +30,10 @@ We will implement our project using golang.
 
 * https://levelup.gitconnected.com/a-practical-approach-to-structuring-go-applications-7f77d7f9c189
 * https://qvault.io/golang/golang-project-structure/
+
+
+
+## Design
+
+![project_workflow](imgs/project_workflow.svg)
+

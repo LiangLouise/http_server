@@ -8,14 +8,13 @@ import (
 	"github.com/liangLouise/http_server/pkg/router"
 )
 
-type HTTP_PROTOCOL_VERSION int
+type HTTP_PROTOCOL_VERSION string
 
 const (
-	HTTP_1 HTTP_PROTOCOL_VERSION = iota
-	HTTP_1_1
-	HTTP_2
+	HTTP_1   HTTP_PROTOCOL_VERSION = "HTTP/1.0"
+	HTTP_1_1 HTTP_PROTOCOL_VERSION = "HTTP/1.1"
+	HTTP_2   HTTP_PROTOCOL_VERSION = "HTTP/2"
 )
-
 
 type Server interface {
 	ListenRequest()
@@ -57,4 +56,3 @@ func (s *server) ListenRequest() {
 		go router.SimpleHandler(c)
 	}
 }
-
