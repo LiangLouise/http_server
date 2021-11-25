@@ -1,26 +1,27 @@
 package router
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"net"
-	"strings"
+
+	"github.com/liangLouise/http_server/pkg/httpParser"
 )
 
 type router struct {
 }
 
 func SimpleHandler(connection net.Conn) {
-	netData, err := bufio.NewReader(connection).ReadString('\n')
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	if strings.TrimSpace(netData) == "STOP" {
-		fmt.Println("Exiting TCP server!")
-		return
-	}
+	// netData, err := bufio.NewReader(connection).ReadString('\n')
+	httpParser.ParseRequest(connection)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// if strings.TrimSpace(netData) == "STOP" {
+	// 	fmt.Println("Exiting TCP server!")
+	// 	return
+	// }
 
 	log.Printf("Address: %s", connection.RemoteAddr().String())
 
