@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/liangLouise/http_server/pkg/httpProto"
 	"github.com/liangLouise/http_server/pkg/server"
 )
 
@@ -15,7 +16,7 @@ func main() {
 		return
 	}
 
-	s, err := server.MakeServer("", args[1], server.HTTP_1_1)
+	s, err := server.MakeServer("", args[1], httpProto.HTTP_1_1)
 	if err != nil {
 		fmt.Printf("Error: %s", err)
 	}
