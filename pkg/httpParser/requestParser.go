@@ -9,14 +9,16 @@ import (
 	"net"
 	"net/textproto"
 	"strings"
+
+	p "github.com/liangLouise/http_server/pkg/protocols"
 )
 
 type Request struct {
 	method   string // GET, POST, etc.
 	header   textproto.MIMEHeader
 	body     []byte
-	uri      string // The raw URI from the request
-	protocol string // "HTTP/1.1"
+	uri      string                  // The raw URI from the request
+	protocol p.HTTP_PROTOCOL_VERSION // "HTTP/1.1"
 }
 
 func (req *Request) GetMethod() string {
@@ -35,7 +37,7 @@ func (req *Request) GetUri() string {
 	return req.uri
 }
 
-func (req *Request) GetProtocol() string {
+func (req *Request) GetProtocol() p.HTTP_PROTOCOL_VERSION {
 	return req.protocol
 }
 
@@ -49,7 +51,7 @@ func ParseRequest(connection net.Conn) {
 	}
 	reqLineSplitted := strings.Split(reqLine, " ")
 	var req Request
-	req.method, req.uri, req.protocol = reqLineSplitted[0], reqLineSplitted[1], reqLineSplitted[2]
+	req.method, req.uri, req.protocol = reqLineSplitted[0], reqLineSplitted[1], p.HTTP_PROTOCOL_VERSION(reqLineSplitted[2])
 
 	header, error := textprotoReader.ReadMIMEHeader()
 	if error != nil {
