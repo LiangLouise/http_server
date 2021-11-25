@@ -13,11 +13,8 @@ type Response struct {
 	protocol   string // "HTTP/1.1"
 }
 
-func (res *Response) SetStatusCode(statusCode int) {
+func (res *Response) SetStatus(statusCode int, statusText string) {
 	res.statusCode = statusCode
-}
-
-func (res *Response) SetStatusText(statusText string) {
 	res.statusText = statusText
 }
 
