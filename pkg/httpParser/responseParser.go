@@ -3,6 +3,8 @@ package httpParser
 
 import (
 	"net/textproto"
+
+	p "github.com/liangLouise/http_server/pkg/protocols"
 )
 
 type Response struct {
@@ -10,7 +12,7 @@ type Response struct {
 	statusText string
 	header     textproto.MIMEHeader
 	body       []byte
-	protocol   string // "HTTP/1.1"
+	protocol   p.HTTP_PROTOCOL_VERSION // "HTTP/1.1"
 }
 
 func (res *Response) SetStatus(statusCode int, statusText string) {
@@ -26,7 +28,7 @@ func (res *Response) SetBody(body []byte) {
 	res.body = body
 }
 
-func (res *Response) SetProtocol(protocol string) {
+func (res *Response) SetProtocol(protocol p.HTTP_PROTOCOL_VERSION) {
 	res.protocol = protocol
 }
 
