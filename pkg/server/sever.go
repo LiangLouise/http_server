@@ -11,9 +11,9 @@ import (
 type HTTP_PROTOCOL_VERSION string
 
 const (
-	HTTP_1   HTTP_PROTOCOL_VERSION = "HTTP/1.0"
-	HTTP_1_1 HTTP_PROTOCOL_VERSION = "HTTP/1.1"
-	HTTP_2   HTTP_PROTOCOL_VERSION = "HTTP/2"
+	HTTP_1   string = "HTTP/1.0"
+	HTTP_1_1 string = "HTTP/1.1"
+	HTTP_2   string = "HTTP/2"
 )
 
 type Server interface {
@@ -23,12 +23,12 @@ type Server interface {
 type server struct {
 	Address  string
 	Port     string
-	Protocol HTTP_PROTOCOL_VERSION
+	Protocol string
 	Listener net.Listener
 	lock     sync.Mutex
 }
 
-func MakeServer(Adr, Port string, Protocol HTTP_PROTOCOL_VERSION) (s *server, err error) {
+func MakeServer(Adr, Port string, Protocol string) (s *server, err error) {
 	port := Adr + ":" + Port
 	l, err := net.Listen("tcp", port)
 	if err != nil {
