@@ -41,10 +41,18 @@ func (req *Request) GetProtocol() httpProto.HTTP_PROTOCOL_VERSION {
 	return req.protocol
 }
 
+func (req *Request) GetConnection() string {
+	return req.GetHeader().Get("Connection")
+}
+
 func ParseRequest(connection net.Conn) Request {
 	var req Request
 	bufioReader := bufio.NewReader(connection)
 	textprotoReader := textproto.NewReader(bufioReader)
+	// for <eof> {
+	// 	reqLine, error := textprotoReader.ReadLine()
+	// }
+
 	reqLine, error := textprotoReader.ReadLine()
 	if error != nil {
 		fmt.Println(error)
@@ -52,7 +60,13 @@ func ParseRequest(connection net.Conn) Request {
 	}
 	reqLineSplitted := strings.Split(reqLine, " ")
 
-	req.method, req.uri, req.protocol = reqLineSplitted[0], reqLineSplitted[1], httpProto.HTTP_PROTOCOL_VERSION(reqLineSplitted[2])
+	req = Request{
+		method:   reqLineSplitted[0],
+		uri:      reqLineSplitted[1],
+		protocol: httpProto.HTTP_PROTOCOL_VERSION(reqLineSplitted[2]),
+	}
+
+	// req.method, req.uri, req.protocol = reqLineSplitted[0], reqLineSplitted[1], httpProto.HTTP_PROTOCOL_VERSION(reqLineSplitted[2])
 
 	header, error := textprotoReader.ReadMIMEHeader()
 	if error != nil {
@@ -76,5 +90,6 @@ func ParseRequest(connection net.Conn) Request {
 		log.Printf("Request Body: %s", req.GetBody())
 	}
 	log.Printf("This request does not have a body")
+	log.Printf("Connection: %s", req.GetConnection())
 	return req
 }

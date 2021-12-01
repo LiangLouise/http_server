@@ -51,6 +51,8 @@ func makeFsService() (fs *fsService, err error) {
 	return fs, nil
 }
 
+// Possible input
+// 1. abs path /var/etc/...
 func (fs *fsService) TryOpen(path string) (cleanPath string, file *os.File, isDir bool, err error) {
 	isDir = false
 
