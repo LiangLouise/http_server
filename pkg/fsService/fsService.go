@@ -10,20 +10,20 @@ import (
 	"sync"
 )
 
-type fsService struct {
+type FsService struct {
 	cwd      string
 	hasIndex bool
 	cache    map[string][]byte
 	lock     sync.Mutex
 }
 
-type FsService interface {
+type FSService interface {
 	TryOpen(path string)
 	WriteFileContent(file *os.File, outCh chan []byte)
 	WriteDirContent(file *os.File, outCh chan string)
 }
 
-func makeFsService() (fs *fsService, err error) {
+func MakeFsService() (fs *FsService, err error) {
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -32,7 +32,7 @@ func makeFsService() (fs *fsService, err error) {
 
 	ext, _ := Exists(cwd + "/index.html")
 
-	fs = &fsService{
+	fs = &FsService{
 		cwd:      cwd,
 		hasIndex: ext,
 		cache:    make(map[string][]byte),
@@ -53,7 +53,7 @@ func makeFsService() (fs *fsService, err error) {
 
 // Possible input
 // 1. abs path /var/etc/...
-func (fs *fsService) TryOpen(path string) (cleanPath string, file *os.File, isDir bool, err error) {
+func (fs *FsService) TryOpen(path string) (cleanPath string, file *os.File, isDir bool, err error) {
 	isDir = false
 
 	absPath, err := filepath.Abs(path)
@@ -86,7 +86,7 @@ func (fs *fsService) TryOpen(path string) (cleanPath string, file *os.File, isDi
 	return cleanPath, f, info.IsDir(), nil
 }
 
-func (fs *fsService) WriteFileContent(file *os.File, outCh chan []byte) (start bool, err error) {
+func (fs *FsService) WriteFileContent(file *os.File, outCh chan []byte) (start bool, err error) {
 	// Ensure the file got closed
 	defer file.Close()
 
@@ -123,7 +123,7 @@ func (fs *fsService) WriteFileContent(file *os.File, outCh chan []byte) (start b
 	return true, nil
 }
 
-func (fs *fsService) WriteDirContent(file *os.File, outCh chan string) (start bool, err error) {
+func (fs *FsService) WriteDirContent(file *os.File, outCh chan string) (start bool, err error) {
 	// Ensure the file got closed
 	defer file.Close()
 

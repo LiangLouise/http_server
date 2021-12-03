@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/liangLouise/http_server/pkg/fsService"
 	"github.com/liangLouise/http_server/pkg/httpProto"
 	"github.com/liangLouise/http_server/pkg/server"
 )
@@ -22,7 +23,12 @@ func main() {
 		return
 	}
 
-	s, err := server.MakeServer(args[1], args[2], httpProto.HTTP_1_1)
+	fs, err := fsService.MakeFsService()
+	if err != nil {
+		log.Fatalf("file system: %s\n", err)
+	}
+
+	s, err := server.MakeServer(args[1], args[2], httpProto.HTTP_1_1, fs)
 	if err != nil {
 		log.Fatalf("listen: %s\n", err)
 	}

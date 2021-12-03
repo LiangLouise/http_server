@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/liangLouise/http_server/pkg/fsService"
 	"github.com/liangLouise/http_server/pkg/httpProto"
 	"github.com/liangLouise/http_server/pkg/router"
 )
@@ -22,9 +23,10 @@ type server struct {
 	Listener net.Listener
 	wg       sync.WaitGroup
 	quit     chan interface{}
+	fs       *fsService.FsService
 }
 
-func MakeServer(Adr, Port string, Protocol httpProto.HTTP_PROTOCOL_VERSION) (s *server, err error) {
+func MakeServer(Adr, Port string, Protocol httpProto.HTTP_PROTOCOL_VERSION, fs *fsService.FsService) (s *server, err error) {
 	port := Adr + ":" + Port
 	l, err := net.Listen("tcp", port)
 	if err != nil {
@@ -37,6 +39,7 @@ func MakeServer(Adr, Port string, Protocol httpProto.HTTP_PROTOCOL_VERSION) (s *
 		Protocol: Protocol,
 		Listener: l,
 		quit:     make(chan interface{}),
+		fs:       fs,
 	}
 
 	// s.wg.Add(1)
