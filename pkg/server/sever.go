@@ -1,7 +1,7 @@
 package server
 
 import (
-	"fmt"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -12,6 +12,7 @@ import (
 
 type Server interface {
 	ListenRequest()
+	ShutDown()
 }
 
 type server struct {
@@ -19,7 +20,8 @@ type server struct {
 	Port     string
 	Protocol httpProto.HTTP_PROTOCOL_VERSION
 	Listener net.Listener
-	lock     sync.Mutex
+	wg       sync.WaitGroup
+	quit     chan interface{}
 }
 
 func MakeServer(Adr, Port string, Protocol httpProto.HTTP_PROTOCOL_VERSION) (s *server, err error) {
@@ -34,8 +36,10 @@ func MakeServer(Adr, Port string, Protocol httpProto.HTTP_PROTOCOL_VERSION) (s *
 		Port:     Port,
 		Protocol: Protocol,
 		Listener: l,
+		quit:     make(chan interface{}),
 	}
 
+	// s.wg.Add(1)
 	return s, nil
 }
 
@@ -50,8 +54,13 @@ func (s *server) ListenRequest() {
 
 		c, err := s.Listener.Accept()
 		if err != nil {
-			fmt.Println(err)
-			continue
+			select {
+			case <-s.quit:
+				return
+			default:
+				log.Println("accept error", err)
+				continue
+			}
 		}
 		// err = SetTimeout(c, 5)
 		// if err != nil {
@@ -59,6 +68,21 @@ func (s *server) ListenRequest() {
 		// 	continue
 		// }
 
-		go router.SimpleHandler(c)
+		// New Connection, now increase wait group by 1
+		s.wg.Add(1)
+		go func() {
+			router.SimpleHandler(s.quit, c)
+			s.wg.Done()
+		}()
 	}
+}
+
+func (s *server) ShutDown() {
+	close(s.quit)
+	// Decrease the main server thread waiting
+	s.Listener.Close()
+	// Wait for the running handler to be done
+	// As we have Timeout for each handler, so it
+	// should not take long.
+	s.wg.Wait()
 }

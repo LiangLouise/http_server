@@ -13,9 +13,15 @@ import (
 type router struct {
 }
 
-func SimpleHandler(connection net.Conn) {
+func SimpleHandler(close chan interface{}, connection net.Conn) {
 	defer connection.Close()
+
 	for {
+		select {
+		case <-close:
+			return
+		default:
+		}
 		req := httpParser.ParseRequest(connection)
 
 		log.Printf("Address: %s", connection.RemoteAddr())
