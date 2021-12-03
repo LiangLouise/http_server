@@ -8,8 +8,8 @@
             "name": "Launch Package",
             "type": "go",
             "request": "launch",
-            "mode": "auto",
-            "program": "http_server/cmd/http1_server/main.go",
+            "mode": "debug",
+            "program": "${workspaceFolder}/cmd/http1_server/main.go",
             "args": [
                 "8000"
             ]
