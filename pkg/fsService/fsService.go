@@ -5,16 +5,18 @@ import (
 	"errors"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
 type FsService struct {
-	cwd      string
-	hasIndex bool
-	cache    map[string][]byte
-	lock     sync.Mutex
+	CWD      string
+	HasIndex bool
+	Cache    map[string][]byte
+	Lock     sync.Mutex
 }
 
 type FSService interface {
@@ -25,27 +27,27 @@ type FSService interface {
 
 func MakeFsService() (fs *FsService, err error) {
 
-	cwd, err := os.Getwd()
+	CWD, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 
-	ext, _ := Exists(cwd + "/index.html")
+	ext, _ := Exists(CWD + "/index.html")
 
 	fs = &FsService{
-		cwd:      cwd,
-		hasIndex: ext,
-		cache:    make(map[string][]byte),
+		CWD:      CWD,
+		HasIndex: ext,
+		Cache:    make(map[string][]byte),
 	}
 
 	// Cache the index.html directly
-	if fs.hasIndex {
+	if fs.HasIndex {
 		dat, err := os.ReadFile("/tmp/dat")
 		if err != nil {
 			return fs, nil
 		}
 
-		fs.cache["index.html"] = dat
+		fs.Cache["index.html"] = dat
 	}
 
 	return fs, nil
@@ -54,27 +56,34 @@ func MakeFsService() (fs *FsService, err error) {
 // Possible input
 // 1. abs path /var/etc/...
 func (fs *FsService) TryOpen(path string) (cleanPath string, file *os.File, isDir bool, err error) {
+
+	if path != "/" {
+		path = strings.Replace(path, "/", "", 1)
+	}
 	isDir = false
 
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return "", nil, isDir, err
 	}
-
-	res, err := filepath.Match(fs.cwd+"/*", absPath)
+	decodedPath, err := url.QueryUnescape(absPath)
 	if err != nil {
 		return "", nil, isDir, err
 	}
-	if !res {
+	if path == "/" {
+		decodedPath = fs.CWD + path
+	}
+
+	if !strings.HasPrefix(decodedPath, fs.CWD+"/") {
 		return "", nil, isDir, errors.New("no such File")
 	}
 
-	cleanPath, err = filepath.Rel(absPath, fs.cwd)
+	cleanPath, err = filepath.Rel(fs.CWD, decodedPath)
 	if err != nil {
 		return "", nil, isDir, err
 	}
 
-	f, err := os.Open(absPath)
+	f, err := os.Open(decodedPath)
 	if err != nil {
 		return "", nil, isDir, err
 	}
@@ -156,4 +165,13 @@ func (fs *FsService) WriteDirContent(file *os.File, outCh chan string) (start bo
 	}()
 
 	return true, nil
+}
+
+func (fs *FsService) GetDirLen(file *os.File) (length int) {
+	files, err := file.ReadDir(-1)
+	if err != nil {
+		log.Printf("Error: %s", err)
+		return
+	}
+	return len(files)
 }

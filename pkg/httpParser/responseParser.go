@@ -62,13 +62,3 @@ func (res *Response) ParseResponse() string {
 	resText += "\r\n" + string(res.body)
 	return resText
 }
-
-func (res *Response) ConstructRes() {
-	res.InitHeader()
-	res.SetProtocol(p.HTTP_1_1)
-	res.SetStatus(200, "OK")
-	res.AddHeader("Content-Type", "text/html")
-	res.AddHeader("Content-Type", "charset=utf-8")
-	res.AddHeader("Content-Length", "20")
-	res.SetBody([]byte("<h1>hello world</h1>"))
-}
