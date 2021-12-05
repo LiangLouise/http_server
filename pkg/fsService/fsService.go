@@ -96,8 +96,6 @@ func (fs *FsService) TryOpen(path string) (cleanPath string, file *os.File, isDi
 }
 
 func (fs *FsService) WriteFileContent(file *os.File, outCh chan []byte) (start bool, err error) {
-	// Ensure the file got closed
-	defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil {
@@ -108,7 +106,8 @@ func (fs *FsService) WriteFileContent(file *os.File, outCh chan []byte) (start b
 		return false, errors.New("not a file")
 	}
 
-	defer func() {
+	go func() {
+		defer file.Close()
 		reader := bufio.NewReader(file)
 		// Buffer the file content into 512 bytes long buffer
 		buf := make([]byte, 512)
@@ -133,8 +132,6 @@ func (fs *FsService) WriteFileContent(file *os.File, outCh chan []byte) (start b
 }
 
 func (fs *FsService) WriteDirContent(file *os.File, outCh chan string) (start bool, err error) {
-	// Ensure the file got closed
-	defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil {
@@ -145,7 +142,9 @@ func (fs *FsService) WriteDirContent(file *os.File, outCh chan string) (start bo
 		return false, errors.New("not a Dir")
 	}
 
-	defer func() {
+	go func() {
+		// Ensure the file got closed
+		defer file.Close()
 		files, err := file.ReadDir(-1)
 		if err != nil {
 			log.Printf("Error: %s", err)
