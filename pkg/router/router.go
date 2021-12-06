@@ -92,16 +92,27 @@ func DirHandler(res httpParser.Response, fs *fsService.FsService, dir *os.File, 
 		fmt.Println(err)
 		return
 	}
-	body := "<pre>\r\n"
+	body := "<html>\r\n"
+	body += "<head>\r\n"
+	body += "<title>Directory listing for "
+	body += uri
+	body += "</title>\r\n"
+	body += "</head>\r\n"
+	body += "<body>\r\n"
 	body += "<h1>Directory listing for "
-	body += uri + "</h1>\r\n<hr>\r\n"
+	body += uri
+	body += "</h1>\r\n"
+	body += "<hr>\r\n"
+	body += "<ul>\r\n"
 
 	for entry := range entries {
-		body += "<a href=\"" + entry + "\">" + entry + "</a>\r\n"
+		body += "<li><a href=\"" + entry + "\">" + entry + "</a></li>\r\n"
 	}
 
+	body += "</ul>\r\n"
 	body += "</hr>\r\n"
-	body += "</pre>\r\n"
+	body += "</body>\r\n"
+	body += "</html>\r\n"
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
 	res.SetProtocol(p.HTTP_1_1)
