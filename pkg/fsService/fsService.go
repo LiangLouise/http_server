@@ -72,8 +72,7 @@ func (fs *FsService) TryOpen(path string) (cleanPath string, file *os.File, isDi
 	if !strings.HasPrefix(path, "/") {
 		return "", nil, isDir, err
 	}
-
-	// Remove the trailling slash,
+	// Remove the starting slash,
 	// So that file system can know it's a
 	// relative path, which must be under cwd
 	path = strings.Replace(path, "/", "", 1)
@@ -89,7 +88,7 @@ func (fs *FsService) TryOpen(path string) (cleanPath string, file *os.File, isDi
 	// But if absPath != $(pwd), we still need to reject
 	// As the Rel will try its best to find a route match
 	// target and base
-	if !strings.HasPrefix(absPath, fs.CWD+"/") {
+	if !strings.HasPrefix(absPath, fs.CWD) {
 		return "", nil, isDir, errors.New("no such File")
 	}
 
