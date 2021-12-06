@@ -6,6 +6,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"os"
 	"regexp"
 	"time"
 
@@ -35,6 +36,7 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 		for _, req := range reqs {
 			log.Printf("Address: %s", connection.RemoteAddr())
 			var res httpParser.Response
+			res.InitHeader()
 			// HTTP/1.1 keep connection alive unless specified or timeouted
 			regex := regexp.MustCompile("(?i)keep-alive")
 			match := regex.Match([]byte(req.GetConnection()))
@@ -64,64 +66,63 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 				return
 			}
 			if isDir {
-				// length := fs.GetDirLen(file)
-				entries := make(chan string)
-				_, err := fs.WriteDirContent(file, entries)
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
-				body := "<pre>\r\n"
-				body += "<h1>Directory listing for "
-				body += uri + "</h1>\r\n<hr>\r\n"
-
-				for entry := range entries {
-					body += "<a href=\"" + entry + "\">" + entry + "</a>\r\n"
-				}
-
-				body += "</hr>\r\n"
-				body += "</pre>\r\n"
-				log.Printf("\r\n%s", []byte(body))
-				res.SetBody([]byte(body))
-				res.InitHeader()
-				res.SetProtocol(p.HTTP_1_1)
-				res.SetStatus(200, "OK")
-				res.AddHeader("Content-Type", "text.html")
-				res.AddHeader("Content-Type", "charset=utf-8")
-				res.AddHeader("Content-Length", strconv.Itoa(len(body)))
+				res = DirHandler(res, fs, file, uri)
 			} else {
-				fileoutput := make(chan []byte)
-				_, size, err := fs.WriteFileContent(file, fileoutput)
-				if err != nil {
-					log.Printf("Error: %s", err)
-					return
-				}
-
-				body := make([]byte, 0)
-
-				// Read chunk of the file from channel
-				for chunck := range fileoutput {
-					body = append(body, chunck...)
-				}
-
-				res.SetBody(body)
-				res.InitHeader()
-				res.SetProtocol(p.HTTP_1_1)
-				res.SetStatus(200, "OK")
-				res.AddHeader("Content-Type", http.DetectContentType([]byte(body)))
-				res.AddHeader("Content-Type", "charset=utf-8")
-				res.AddHeader("Content-Length", strconv.FormatInt(size, 10))
-
+				res = FileHandler(res, fs, file, uri)
 			}
-
-			// fmt.Fprintf(connection, "HTTP/1.1 200 OK\r\n"+
-			// 	"Content-Type: text/html; charset=utf-8\r\n"+
-			// 	"Content-Length: 20\r\n"+
-			// 	"\r\n"+
-			// 	"<h1>hello world</h1>")
-
 			fmt.Fprintf(connection, "%s", res.ParseResponse())
 		}
 	}
 
+}
+
+func DirHandler(res httpParser.Response, fs *fsService.FsService, dir *os.File, uri string) (response httpParser.Response) {
+	entries := make(chan string)
+	_, err := fs.WriteDirContent(dir, entries)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	body := "<pre>\r\n"
+	body += "<h1>Directory listing for "
+	body += uri + "</h1>\r\n<hr>\r\n"
+
+	for entry := range entries {
+		body += "<a href=\"" + entry + "\">" + entry + "</a>\r\n"
+	}
+
+	body += "</hr>\r\n"
+	body += "</pre>\r\n"
+	log.Printf("\r\n%s", []byte(body))
+	res.SetBody([]byte(body))
+	res.SetProtocol(p.HTTP_1_1)
+	res.SetStatus(200, "OK")
+	res.AddHeader("Content-Type", "text.html")
+	res.AddHeader("Content-Type", "charset=utf-8")
+	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
+	return res
+}
+
+func FileHandler(res httpParser.Response, fs *fsService.FsService, file *os.File, uri string) (response httpParser.Response) {
+	fileoutput := make(chan []byte)
+	_, size, err := fs.WriteFileContent(file, fileoutput)
+	if err != nil {
+		log.Printf("Error: %s", err)
+		return
+	}
+
+	body := make([]byte, 0)
+
+	// Read chunk of the file from channel
+	for chunck := range fileoutput {
+		body = append(body, chunck...)
+	}
+
+	res.SetBody(body)
+	res.SetProtocol(p.HTTP_1_1)
+	res.SetStatus(200, "OK")
+	res.AddHeader("Content-Type", http.DetectContentType([]byte(body)))
+	res.AddHeader("Content-Type", "charset=utf-8")
+	res.AddHeader("Content-Length", strconv.FormatInt(size, 10))
+	return res
 }
