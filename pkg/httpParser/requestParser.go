@@ -3,7 +3,6 @@ package httpParser
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -53,13 +52,13 @@ func ParseRequest(connection net.Conn) []Request {
 	for {
 		data, error := bufioReader.Peek(1)
 		if error != nil {
-			fmt.Println(error)
+			log.Println(error)
 			return reqList
 		}
 		log.Printf("%s", data)
 		reqLine, error := textprotoReader.ReadLine()
 		if error != nil {
-			fmt.Println(error)
+			log.Println(error)
 			return reqList
 		}
 		reqLineSplitted := strings.Split(reqLine, " ")
@@ -74,7 +73,7 @@ func ParseRequest(connection net.Conn) []Request {
 
 		header, error := textprotoReader.ReadMIMEHeader()
 		if error != nil {
-			fmt.Println(error)
+			log.Println(error)
 			return reqList
 		}
 		req.header = header
@@ -87,7 +86,7 @@ func ParseRequest(connection net.Conn) []Request {
 			body := make([]byte, length)
 			_, error = io.ReadFull(bufioReader, body) // ReadAll?
 			if error != nil {
-				fmt.Println(error)
+				log.Println(error)
 				return reqList
 			}
 			req.body = body

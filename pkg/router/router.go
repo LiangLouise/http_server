@@ -65,7 +65,7 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 			}
 			_, file, isDir, err := fs.TryOpen(uri)
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 				res = NotFoundHadnler(res)
 			} else {
 				if isDir {
@@ -89,7 +89,7 @@ func DirHandler(res httpParser.Response, fs *fsService.FsService, dir *os.File, 
 	entries := make(chan string)
 	_, err := fs.WriteDirContent(dir, entries)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	body := "<pre>\r\n"
