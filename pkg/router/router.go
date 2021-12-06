@@ -18,7 +18,6 @@ import (
 	"github.com/liangLouise/http_server/pkg/fsService"
 	"github.com/liangLouise/http_server/pkg/httpParser"
 	p "github.com/liangLouise/http_server/pkg/httpProto"
-	sc "github.com/liangLouise/http_server/pkg/httpStatusCode"
 )
 
 type router struct {
@@ -183,7 +182,7 @@ func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 		log.Printf("\r\n%s", []byte(body))
 		res.SetBody([]byte(body))
 		res.SetProtocol(p.HTTP_1_1)
-		res.SetStatus(int(sc.OK_CODE), string(sc.OK_TEXT))
+		res.SetStatus(int(p.OK_CODE), string(p.OK_TEXT))
 		res.AddHeader("Content-Type", "text.html")
 		res.AddHeader("Content-Type", "charset=utf-8")
 		res.AddHeader("Content-Length", strconv.Itoa(len(body)))
@@ -215,7 +214,7 @@ func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCO
 
 	res.SetBody(body)
 	res.SetProtocol(protocol)
-	res.SetStatus(int(sc.OK_CODE), string(sc.OK_TEXT))
+	res.SetStatus(int(p.OK_CODE), string(p.OK_TEXT))
 	mtype := mimetype.Detect(body[:512])
 	res.AddHeader("Content-Type", mtype.String())
 	res.AddHeader("Content-Length", strconv.FormatInt(size, 10))
@@ -244,7 +243,7 @@ func NotFoundHadnler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) 
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
 	res.SetProtocol(protocol)
-	res.SetStatus(int(sc.NOT_FOUND_CODE), string(sc.NOT_FOUND_TEXT))
+	res.SetStatus(int(p.NOT_FOUND_CODE), string(p.NOT_FOUND_TEXT))
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
@@ -286,7 +285,7 @@ func IfModSinceHandler(t string, res httpParser.Response, file *os.File, isDir b
 		log.Printf("\r\n%s", []byte(body))
 		res.SetBody([]byte(body))
 		res.SetProtocol(protocol)
-		res.SetStatus(int(sc.NOT_MODIFIED_CODE), string(sc.NOT_MODIFIED_TEXT))
+		res.SetStatus(int(p.NOT_MODIFIED_CODE), string(p.NOT_MODIFIED_TEXT))
 		res.AddHeader("Content-Type", "text.html")
 		res.AddHeader("Content-Type", "charset=utf-8")
 		res.AddHeader("Content-Length", strconv.Itoa(len(body)))
@@ -310,7 +309,7 @@ func PermDenyHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) 
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
 	res.SetProtocol(protocol)
-	res.SetStatus(int(sc.FORBIDDEN_CODE), string(sc.FORBIDDEN_TEXT))
+	res.SetStatus(int(p.FORBIDDEN_CODE), string(p.FORBIDDEN_TEXT))
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
@@ -333,7 +332,7 @@ func InvalidMethodHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERS
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
 	res.SetProtocol(protocol)
-	res.SetStatus(int(sc.METHOD_NOT_ALLOWED_CODE), string(sc.METHOD_NOT_ALLOWED_TEXT))
+	res.SetStatus(int(p.METHOD_NOT_ALLOWED_CODE), string(p.METHOD_NOT_ALLOWED_TEXT))
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
