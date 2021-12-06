@@ -19,8 +19,12 @@ The Project is implemented in [Golang](https://go.dev/), one of C family languag
 
 ## Project Implementation and Documentation
 
+### Project Sturcture
+
 The structure of the project is as below.
+
 The entry of point the server or main program is under `/cmd/http1_server/`.
+
 The packages in `/pkg` directory contain the logics including:
 
 * `/pkg/config`: The codes used to load configurations for server from yaml file;
@@ -59,6 +63,15 @@ $ tree .
 
 For more details of each methods and struct, please refer the doc in each of *.go file
 
+### Server Work Flow
+
 The work flow of the server can be illustrated as below:
 
 ![project_workflow](imgs/project_workflow.svg)
+
+
+## Work Contribution
+
+## Setup And Running
+
+## Implementation Testing
