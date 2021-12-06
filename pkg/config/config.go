@@ -15,10 +15,11 @@ type ServerConfig struct {
 	} `yaml:"Server"`
 
 	RunTime struct {
-		MaxConnections int  `yaml:"MAX_CONCURRENT_CONNECTIONS"`
-		HasPersistant  bool `yaml:"ENABLE_PESISTANT"`
-		HasPipelining  bool `yaml:"ENABLE_PIPELINING"`
-		MaxPipelining  int  `yaml:"MAX_PIPELINING_NUMBER"`
+		MaxConnections  int  `yaml:"MAX_CONCURRENT_CONNECTIONS"`
+		HasPersistant   bool `yaml:"ENABLE_PESISTANT"`
+		HasPipelining   bool `yaml:"ENABLE_PIPELINING"`
+		MaxPipelining   int  `yaml:"MAX_PIPELINING_NUMBER"`
+		TimeoutDuration int  `yaml:"TIMEOUT_DURATION"`
 	} `yaml:"RunTime"`
 }
 

@@ -16,8 +16,8 @@ type Request struct {
 	method   string // GET, POST, etc.
 	header   textproto.MIMEHeader
 	body     []byte
-	uri      string                          // The raw URI from the request
-	protocol httpProto.HTTP_PROTOCOL_VERSION // "HTTP/1.1"
+	uri      string // The raw URI from the request
+	protocol httpProto.HTTP_PROTOCOL_VERSION
 }
 
 func (req *Request) GetMethod() string {
