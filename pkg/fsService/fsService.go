@@ -14,8 +14,7 @@ type FsService struct {
 
 type FSService interface {
 	TryOpen(path string)
-	WriteFileContent(file *os.File, outCh chan []byte)
-	WriteDirContent(file *os.File, outCh chan string)
+	TryOpenIndex(path string)
 }
 
 // Create a new fs serverice instance. The working
@@ -88,6 +87,7 @@ func (fs *FsService) TryOpen(path string) (cleanPath string, file *os.File, isDi
 	return cleanPath, f, info.IsDir(), nil
 }
 
+// Try to open an index html file in the dir given path
 func TryOpenIndex(path string) (file *os.File, err error) {
 	path = path + "/index.html"
 	file, err = os.Open(path)
