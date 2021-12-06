@@ -1,7 +1,9 @@
 package router
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net"
@@ -118,20 +120,15 @@ func DirHandler(res httpParser.Response, fs *fsService.FsService, dir *os.File, 
 }
 
 func FileHandler(res httpParser.Response, fs *fsService.FsService, file *os.File) (response httpParser.Response) {
-	fileoutput := make(chan []byte)
-	_, size, err := fs.WriteFileContent(file, fileoutput)
+
+	defer file.Close()
+
+	buf := bytes.NewBuffer(nil)
+	size, err := io.Copy(buf, file)
 	if err != nil {
-		log.Printf("Error: %s", err)
-		return
+		log.Printf("FileHandler: %s", err)
 	}
-
-	var body []byte
-
-	// Read chunk of the file from channel
-	for chunck := range fileoutput {
-		// fmt.Printf("%s %s", "channel", chunck[:10])
-		body = append(body, chunck...)
-	}
+	body := buf.Bytes()
 
 	res.SetBody(body)
 	res.SetProtocol(p.HTTP_1_1)
