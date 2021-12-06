@@ -94,21 +94,15 @@ func DirHandler(res httpParser.Response, fs *fsService.FsService, dir *os.File, 
 	}
 	body := "<html>\r\n"
 	body += "<head>\r\n"
-	body += "<title>Directory listing for "
-	body += uri
-	body += "</title>\r\n"
+	body += "<title>Directory listing for " + uri + "</title>\r\n"
 	body += "</head>\r\n"
 	body += "<body>\r\n"
-	body += "<h1>Directory listing for "
-	body += uri
-	body += "</h1>\r\n"
+	body += "<h1>Directory listing for " + uri + "</h1>\r\n"
 	body += "<hr>\r\n"
 	body += "<ul>\r\n"
-
 	for entry := range entries {
 		body += "<li><a href=\"" + entry + "\">" + entry + "</a></li>\r\n"
 	}
-
 	body += "</ul>\r\n"
 	body += "</hr>\r\n"
 	body += "</body>\r\n"
