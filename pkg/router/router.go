@@ -66,12 +66,13 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 			_, file, isDir, err := fs.TryOpen(uri)
 			if err != nil {
 				fmt.Println(err)
-				return
-			}
-			if isDir {
-				res = DirHandler(res, fs, file, uri)
+				res = NotFoundHadnler(res)
 			} else {
-				res = FileHandler(res, fs, file, uri)
+				if isDir {
+					res = DirHandler(res, fs, file, uri)
+				} else {
+					res = FileHandler(res, fs, file)
+				}
 			}
 
 			fmt.Fprintf(connection, "%s", res.ParseResponse())
@@ -111,8 +112,8 @@ func DirHandler(res httpParser.Response, fs *fsService.FsService, dir *os.File, 
 	return res
 }
 
-func FileHandler(res httpParser.Response, fs *fsService.FsService, file *os.File, uri string) (response httpParser.Response) {
-	fileoutput := make(chan []byte, 1)
+func FileHandler(res httpParser.Response, fs *fsService.FsService, file *os.File) (response httpParser.Response) {
+	fileoutput := make(chan []byte)
 	_, size, err := fs.WriteFileContent(file, fileoutput)
 	if err != nil {
 		log.Printf("Error: %s", err)
@@ -136,5 +137,27 @@ func FileHandler(res httpParser.Response, fs *fsService.FsService, file *os.File
 	res.AddHeader("Content-Type", mtype.String())
 	// res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.FormatInt(size, 10))
+	return res
+}
+
+func NotFoundHadnler(res httpParser.Response) (response httpParser.Response) {
+	body := "<html>\r\n"
+	body += "<head>\r\n"
+	body += "<title>Error response</title>\r\n"
+	body += "</head>\r\n"
+
+	body += "<h1>Error response</h1>\r\n"
+	body += "<p>Error code: 404</p>\r\n"
+	body += "<p>Message: File not found.</p>\r\n"
+	body += "<body>\r\n"
+	body += "</body>\r\n"
+	body += "</html>\r\n"
+	log.Printf("\r\n%s", []byte(body))
+	res.SetBody([]byte(body))
+	res.SetProtocol(p.HTTP_1_1)
+	res.SetStatus(404, "File not found")
+	res.AddHeader("Content-Type", "text.html")
+	res.AddHeader("Content-Type", "charset=utf-8")
+	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
 	return res
 }
