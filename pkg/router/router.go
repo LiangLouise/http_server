@@ -5,13 +5,13 @@ import (
 	"log"
 	"math"
 	"net"
-	"net/http"
 	"os"
 	"regexp"
 	"time"
 
 	"strconv"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/liangLouise/http_server/pkg/fsService"
 	"github.com/liangLouise/http_server/pkg/httpParser"
 	p "github.com/liangLouise/http_server/pkg/httpProto"
@@ -112,25 +112,29 @@ func DirHandler(res httpParser.Response, fs *fsService.FsService, dir *os.File, 
 }
 
 func FileHandler(res httpParser.Response, fs *fsService.FsService, file *os.File, uri string) (response httpParser.Response) {
-	fileoutput := make(chan []byte)
+	fileoutput := make(chan []byte, 1)
 	_, size, err := fs.WriteFileContent(file, fileoutput)
 	if err != nil {
 		log.Printf("Error: %s", err)
 		return
 	}
 
-	body := make([]byte, 0)
+	var body []byte
 
 	// Read chunk of the file from channel
 	for chunck := range fileoutput {
+		// fmt.Printf("%s %s", "channel", chunck[:10])
 		body = append(body, chunck...)
 	}
 
 	res.SetBody(body)
 	res.SetProtocol(p.HTTP_1_1)
 	res.SetStatus(200, "OK")
-	res.AddHeader("Content-Type", http.DetectContentType([]byte(body)))
-	res.AddHeader("Content-Type", "charset=utf-8")
+	mtype := mimetype.Detect(body[:512])
+	log.Printf("%s %s", "Content-Type", mtype.String())
+
+	res.AddHeader("Content-Type", mtype.String())
+	// res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.FormatInt(size, 10))
 	return res
 }

@@ -1,7 +1,6 @@
 package fsService
 
 import (
-	"bufio"
 	"errors"
 	"io"
 	"log"
@@ -122,11 +121,17 @@ func (fs *FsService) WriteFileContent(file *os.File, outCh chan []byte) (start b
 
 	go func() {
 		defer file.Close()
-		reader := bufio.NewReader(file)
+		// TODO: bufio Reader will always do lazy loading
+		// so data might not fully sent over channel,
+		// Which mess up the later chunks
+		// reader := bufio.NewReader(file)
+
 		// Buffer the file content into 512 bytes long buffer
 		buf := make([]byte, 512)
+
 		for {
-			n, err := reader.Read(buf)
+			n, err := file.Read(buf)
+			// fmt.Printf("%s %s\n", "buffer", buf[:10])
 
 			if err != nil {
 
