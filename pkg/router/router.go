@@ -60,11 +60,12 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 			} else {
 				res.AddHeader("Keep-Alive", "timeout=5")
 				res.AddHeader("Keep-Alive", "max=5")
-				res.SetHeader("Last-Modified", time.Now().Format("01-02-2006 15:04:05"))
+				// res.SetHeader("Last-Modified", time.Now().Format("01-02-2006 15:04:05"))
 				keepOpen = true
 			}
 
 			uri := req.GetUri()
+			time := req.GetHeader().Get("If-Modified-Since")
 			if uri == "/" {
 				if fs.HasIndex {
 					res.SetBody(fs.Cache["index.html"])
@@ -75,11 +76,16 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 				log.Println(err)
 				res = NotFoundHadnler(res)
 			} else {
-				if isDir {
-					res = DirHandler(res, fs, file, uri)
+				if time != "" {
+					res = IfModSinceHandler(res, file, isDir)
 				} else {
-					res = FileHandler(res, fs, file)
+					if isDir {
+						res = DirHandler(res, fs, file, uri)
+					} else {
+						res = FileHandler(res, file)
+					}
 				}
+
 			}
 
 			fmt.Fprintf(connection, "%s", res.ParseResponse())
@@ -124,7 +130,7 @@ func DirHandler(res httpParser.Response, fs *fsService.FsService, dir *os.File, 
 	return res
 }
 
-func FileHandler(res httpParser.Response, fs *fsService.FsService, file *os.File) (response httpParser.Response) {
+func FileHandler(res httpParser.Response, file *os.File) (response httpParser.Response) {
 
 	defer file.Close()
 
@@ -166,5 +172,9 @@ func NotFoundHadnler(res httpParser.Response) (response httpParser.Response) {
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
+	return res
+}
+
+func IfModSinceHandler(res httpParser.Response, file *os.File, isDir bool) (response httpParser.Response) {
 	return res
 }

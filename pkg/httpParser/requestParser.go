@@ -44,16 +44,17 @@ func (req *Request) GetConnection() string {
 	return req.GetHeader().Get("Connection")
 }
 
-func ParseRequest(connection net.Conn) []Request {
+func ParseRequest(connection net.Conn) ([]Request, error) {
 	var req Request
+	var err error
 	reqList := make([]Request, 0)
 	bufioReader := bufio.NewReader(connection)
 	textprotoReader := textproto.NewReader(bufioReader)
 	for {
-		reqLine, error := textprotoReader.ReadLine()
-		if error != nil {
-			log.Println(error)
-			return reqList
+		reqLine, err := textprotoReader.ReadLine()
+		if err != nil {
+			log.Println(err)
+			return reqList, err
 		}
 		reqLineSplitted := strings.Split(reqLine, " ")
 
@@ -65,10 +66,10 @@ func ParseRequest(connection net.Conn) []Request {
 
 		// req.method, req.uri, req.protocol = reqLineSplitted[0], reqLineSplitted[1], httpProto.HTTP_PROTOCOL_VERSION(reqLineSplitted[2])
 
-		header, error := textprotoReader.ReadMIMEHeader()
-		if error != nil {
-			log.Println(error)
-			return reqList
+		header, err := textprotoReader.ReadMIMEHeader()
+		if err != nil {
+			log.Println(err)
+			return reqList, err
 		}
 		req.header = header
 		log.Printf("Request Method: %s", req.GetMethod())
@@ -78,10 +79,10 @@ func ParseRequest(connection net.Conn) []Request {
 		if req.GetHeader().Get("Content-Length") != "" {
 			length := req.GetHeader().Get("Content-Length")[0]
 			body := make([]byte, length)
-			_, error = io.ReadFull(bufioReader, body) // ReadAll?
-			if error != nil {
-				log.Println(error)
-				return reqList
+			_, err = io.ReadFull(bufioReader, body) // ReadAll?
+			if err != nil {
+				log.Println(err)
+				return reqList, err
 			}
 			req.body = body
 			log.Printf("Request Body: %s", req.GetBody())
@@ -97,5 +98,5 @@ func ParseRequest(connection net.Conn) []Request {
 
 	}
 
-	return reqList
+	return reqList, err
 }
