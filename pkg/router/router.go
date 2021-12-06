@@ -14,9 +14,11 @@ import (
 	"strconv"
 
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/liangLouise/http_server/pkg/config"
 	"github.com/liangLouise/http_server/pkg/fsService"
 	"github.com/liangLouise/http_server/pkg/httpParser"
 	p "github.com/liangLouise/http_server/pkg/httpProto"
+	sc "github.com/liangLouise/http_server/pkg/httpStatusCode"
 )
 
 type router struct {
@@ -25,7 +27,7 @@ type router struct {
 // this is the main logic of the connection handler.
 // It will call different helper handler to further handle the request
 // based on situation
-func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.FsService, protocol p.HTTP_PROTOCOL_VERSION) {
+func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.FsService, config *config.ServerConfig) {
 
 	defer connection.Close()
 
@@ -36,11 +38,13 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 		default:
 		}
 		// renew timeout timer
-		timeout := time.Duration(5) * (time.Second)
-		err := connection.SetDeadline(time.Now().Add(timeout))
-		if err != nil {
-			fmt.Println(err)
-			return
+		if config.RunTime.HasPersistant {
+			timeout := time.Duration(config.RunTime.TimeoutDuration) * (time.Second)
+			err := connection.SetDeadline(time.Now().Add(timeout))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 		}
 		reqs, err := httpParser.ParseRequest(connection)
 		// check if anyone error has occur while trying to read from the connection
@@ -54,16 +58,17 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 			}
 			return
 		}
-		// limit maxt pipelined requests to 5
+
 		var maxReq float64
-		if protocol == p.HTTP_1 {
+		if config.Server.Version == p.HTTP_1 || !config.RunTime.HasPipelining {
 			maxReq = 1
 		} else {
-			maxReq = math.Min(float64(len(reqs)), 5)
+			// limit max pipelined requests as specified in the config file
+			maxReq = math.Min(float64(len(reqs)), float64(config.RunTime.MaxPipelining))
 		}
 		reqs = reqs[:int(maxReq)]
 		for _, req := range reqs {
-			res, keepOpen := SingleReqHandler(connection, req, fs, protocol)
+			res, keepOpen := SingleReqHandler(connection, req, fs, config.Server.Version)
 
 			// render the response
 			fmt.Fprintf(connection, "%s", res.ParseResponse())
@@ -178,7 +183,7 @@ func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 		log.Printf("\r\n%s", []byte(body))
 		res.SetBody([]byte(body))
 		res.SetProtocol(p.HTTP_1_1)
-		res.SetStatus(200, "OK")
+		res.SetStatus(int(sc.OK_CODE), string(sc.OK_TEXT))
 		res.AddHeader("Content-Type", "text.html")
 		res.AddHeader("Content-Type", "charset=utf-8")
 		res.AddHeader("Content-Length", strconv.Itoa(len(body)))
@@ -210,7 +215,7 @@ func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCO
 
 	res.SetBody(body)
 	res.SetProtocol(protocol)
-	res.SetStatus(200, "OK")
+	res.SetStatus(int(sc.OK_CODE), string(sc.OK_TEXT))
 	mtype := mimetype.Detect(body[:512])
 	res.AddHeader("Content-Type", mtype.String())
 	res.AddHeader("Content-Length", strconv.FormatInt(size, 10))
@@ -239,7 +244,7 @@ func NotFoundHadnler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) 
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
 	res.SetProtocol(protocol)
-	res.SetStatus(404, "File not found")
+	res.SetStatus(int(sc.NOT_FOUND_CODE), string(sc.NOT_FOUND_TEXT))
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
@@ -281,7 +286,7 @@ func IfModSinceHandler(t string, res httpParser.Response, file *os.File, isDir b
 		log.Printf("\r\n%s", []byte(body))
 		res.SetBody([]byte(body))
 		res.SetProtocol(protocol)
-		res.SetStatus(304, "Not Modified")
+		res.SetStatus(int(sc.NOT_MODIFIED_CODE), string(sc.NOT_MODIFIED_TEXT))
 		res.AddHeader("Content-Type", "text.html")
 		res.AddHeader("Content-Type", "charset=utf-8")
 		res.AddHeader("Content-Length", strconv.Itoa(len(body)))
@@ -305,7 +310,7 @@ func PermDenyHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) 
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
 	res.SetProtocol(protocol)
-	res.SetStatus(403, "Forbidden")
+	res.SetStatus(int(sc.FORBIDDEN_CODE), string(sc.FORBIDDEN_TEXT))
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
@@ -328,7 +333,7 @@ func InvalidMethodHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERS
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
 	res.SetProtocol(protocol)
-	res.SetStatus(405, "Method Not Allowed")
+	res.SetStatus(int(sc.METHOD_NOT_ALLOWED_CODE), string(sc.METHOD_NOT_ALLOWED_TEXT))
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.Itoa(len(body)))

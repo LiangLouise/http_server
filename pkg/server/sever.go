@@ -5,7 +5,6 @@ import (
 	"net"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/liangLouise/http_server/pkg/config"
 	"github.com/liangLouise/http_server/pkg/fsService"
@@ -27,6 +26,7 @@ type server struct {
 	Wg       sync.WaitGroup
 	quit     chan interface{}
 	fs       *fsService.FsService
+	config   *config.ServerConfig
 }
 
 func MakeServer(config *config.ServerConfig, fs *fsService.FsService) (s *server, err error) {
@@ -50,16 +50,11 @@ func MakeServer(config *config.ServerConfig, fs *fsService.FsService) (s *server
 		Listener: l,
 		quit:     make(chan interface{}),
 		fs:       fs,
+		config:   config,
 	}
 
 	// s.wg.Add(1)
 	return s, nil
-}
-
-func SetTimeout(conn net.Conn, timer int) error {
-	timeout := time.Duration(timer) * (time.Second)
-	err := conn.SetDeadline(time.Now().Add(timeout))
-	return err
 }
 
 func (s *server) ListenRequest() {
@@ -75,17 +70,12 @@ func (s *server) ListenRequest() {
 				continue
 			}
 		}
-		// err = SetTimeout(c, 5)
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	continue
-		// }
 
 		// New Connection, now increase wait group by 1
 		s.Wg.Add(1)
 
 		go func() {
-			router.SimpleHandler(s.quit, c, s.fs, s.Protocol)
+			router.SimpleHandler(s.quit, c, s.fs, s.config)
 			s.Wg.Done()
 		}()
 	}
