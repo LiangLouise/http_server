@@ -30,8 +30,6 @@ The packages in `/pkg` directory contain the logics including:
 * `/pkg/router`: The handler logics for handling incomming HTTP request;
 * `/pkg/server`: API to create a new Server instance and run it.
 
-For details of each methods and struct, please refer the doc in each of *.go file
-
 ```shell
 $ tree .
 .
@@ -59,6 +57,8 @@ $ tree .
 ├── mainconfig.yml
 ```
 
-The work flow of the server is illustrated as below:
+For more details of each methods and struct, please refer the doc in each of *.go file
+
+The work flow of the server can be illustrated as below:
 
 ![project_workflow](imgs/project_workflow.svg)
