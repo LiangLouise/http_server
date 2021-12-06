@@ -21,6 +21,7 @@ type router struct {
 }
 
 func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.FsService) {
+	keepOpen := true
 	defer connection.Close()
 
 	for {
@@ -42,6 +43,7 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 			match := regex.Match([]byte(req.GetConnection()))
 			if !match {
 				log.Printf("closing the connection %s", connection.RemoteAddr())
+				keepOpen = false
 			} else {
 				res.AddHeader("Keep-Alive", "timeout=5")
 				res.AddHeader("Keep-Alive", "max=5")
@@ -52,6 +54,7 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 				// 	return
 				// }
 				res.SetHeader("Last-Modified", time.Now().Format("01-02-2006 15:04:05"))
+				keepOpen = true
 			}
 
 			uri := req.GetUri()
@@ -70,7 +73,12 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 			} else {
 				res = FileHandler(res, fs, file, uri)
 			}
+
 			fmt.Fprintf(connection, "%s", res.ParseResponse())
+
+			if !keepOpen {
+				return
+			}
 		}
 	}
 
