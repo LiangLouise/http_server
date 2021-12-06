@@ -11,6 +11,7 @@ import (
 	"github.com/liangLouise/http_server/pkg/fsService"
 	"github.com/liangLouise/http_server/pkg/httpProto"
 	"github.com/liangLouise/http_server/pkg/router"
+	"golang.org/x/net/netutil"
 )
 
 type Server interface {
@@ -23,7 +24,7 @@ type server struct {
 	Port     string
 	Protocol httpProto.HTTP_PROTOCOL_VERSION
 	Listener net.Listener
-	wg       sync.WaitGroup
+	Wg       sync.WaitGroup
 	quit     chan interface{}
 	fs       *fsService.FsService
 }
@@ -34,6 +35,13 @@ func MakeServer(config *config.ServerConfig, fs *fsService.FsService) (s *server
 	if err != nil {
 		return nil, err
 	}
+
+	// Set the upper bound of the TCP connections the
+	// server can accpet
+	if config.RunTime.MaxConnections <= 0 {
+		log.Fatal("The max TCP connection number is expected to be greater than 0")
+	}
+	l = netutil.LimitListener(l, config.RunTime.MaxConnections)
 
 	s = &server{
 		Address:  config.Server.Host,
@@ -74,10 +82,11 @@ func (s *server) ListenRequest() {
 		// }
 
 		// New Connection, now increase wait group by 1
-		s.wg.Add(1)
+		s.Wg.Add(1)
+
 		go func() {
 			router.SimpleHandler(s.quit, c, s.fs, s.Protocol)
-			s.wg.Done()
+			s.Wg.Done()
 		}()
 	}
 }
@@ -89,5 +98,5 @@ func (s *server) ShutDown() {
 	// Wait for the running handler to be done
 	// As we have Timeout for each handler, so it
 	// should not take long.
-	s.wg.Wait()
+	s.Wg.Wait()
 }
