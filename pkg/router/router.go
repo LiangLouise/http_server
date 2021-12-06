@@ -24,6 +24,7 @@ type router struct {
 
 func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.FsService) {
 	keepOpen := true
+
 	defer connection.Close()
 
 	for {
@@ -33,7 +34,17 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 		default:
 		}
 
-		reqs := httpParser.ParseRequest(connection)
+		timeout := time.Duration(5) * (time.Second)
+		err := connection.SetDeadline(time.Now().Add(timeout))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		reqs, err := httpParser.ParseRequest(connection)
+		if err != nil {
+			log.Printf("error while parsing request: %s", err)
+			return
+		}
 		maxReq := math.Min(float64(len(reqs)), 5)
 		reqs = reqs[:int(maxReq)]
 		for _, req := range reqs {
@@ -49,12 +60,6 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 			} else {
 				res.AddHeader("Keep-Alive", "timeout=5")
 				res.AddHeader("Keep-Alive", "max=5")
-				// timeout := time.Duration(5) * (time.Second)
-				// err := connection.SetDeadline(time.Now().Add(timeout))
-				// if err != nil {
-				// 	fmt.Println(err)
-				// 	return
-				// }
 				res.SetHeader("Last-Modified", time.Now().Format("01-02-2006 15:04:05"))
 				keepOpen = true
 			}

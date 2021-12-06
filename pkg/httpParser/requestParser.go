@@ -50,12 +50,6 @@ func ParseRequest(connection net.Conn) []Request {
 	bufioReader := bufio.NewReader(connection)
 	textprotoReader := textproto.NewReader(bufioReader)
 	for {
-		data, error := bufioReader.Peek(1)
-		if error != nil {
-			log.Println(error)
-			return reqList
-		}
-		log.Printf("%s", data)
 		reqLine, error := textprotoReader.ReadLine()
 		if error != nil {
 			log.Println(error)
