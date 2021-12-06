@@ -35,5 +35,5 @@ func LoadConfig(path string) (config *ServerConfig, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return config, nil
+	return &cfg, nil
 }
