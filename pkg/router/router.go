@@ -25,8 +25,7 @@ type router struct {
 // this is the main logic of the connection handler.
 // It will call different helper handler to further handle the request
 // based on situation
-func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.FsService) {
-	keepOpen := true
+func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.FsService, protocol p.HTTP_PROTOCOL_VERSION) {
 
 	defer connection.Close()
 
@@ -56,51 +55,15 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 			return
 		}
 		// limit maxt pipelined requests to 5
-		maxReq := math.Min(float64(len(reqs)), 5)
+		var maxReq float64
+		if protocol == p.HTTP_1 {
+			maxReq = 1
+		} else {
+			maxReq = math.Min(float64(len(reqs)), 5)
+		}
 		reqs = reqs[:int(maxReq)]
 		for _, req := range reqs {
-			log.Printf("Address: %s", connection.RemoteAddr())
-			var res httpParser.Response
-			res.InitHeader()
-			// only GET method is allowed
-			if req.GetMethod() != "GET" {
-				res = InvalidMethodHandler(res)
-			} else {
-				// HTTP/1.1 keep connection alive unless specified or timeouted
-				regex := regexp.MustCompile("(?i)keep-alive")
-				match := regex.Match([]byte(req.GetConnection()))
-				if !match {
-					log.Printf("keep-alive not found, closing the connection %s", connection.RemoteAddr())
-					keepOpen = false
-				} else {
-					res.AddHeader("Keep-Alive", "timeout=5")
-					res.AddHeader("Keep-Alive", "max=5")
-					keepOpen = true
-				}
-				uri := req.GetUri()
-				t := req.GetHeader().Get("If-Modified-Since")
-				// try to open the file
-				basepath, file, isDir, err := fs.TryOpen(uri)
-				// file does not exist, call coresponding handler
-				if err != nil {
-					log.Println(err)
-					res = NotFoundHadnler(res)
-				} else {
-					// request is asking if file has been modified, call coresponding handler
-					if t != "" {
-						res = IfModSinceHandler(t, res, file, isDir, basepath, uri)
-					} else {
-						// call diretory handler
-						if isDir {
-							res = DirHandler(res, basepath, file, uri)
-							// call file handler
-						} else {
-							res = FileHandler(res, file)
-						}
-					}
-
-				}
-			}
+			res, keepOpen := SingleReqHandler(connection, req, fs, protocol)
 
 			// render the response
 			fmt.Fprintf(connection, "%s", res.ParseResponse())
@@ -114,10 +77,58 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 
 }
 
+func SingleReqHandler(connection net.Conn, req httpParser.Request, fs *fsService.FsService, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response, persistence bool) {
+	keepOpen := true
+	log.Printf("Address: %s", connection.RemoteAddr())
+	var res httpParser.Response
+	res.InitHeader()
+	// only GET method is allowed
+	if req.GetMethod() != "GET" {
+		res = InvalidMethodHandler(res, protocol)
+	} else {
+		// HTTP/1.1 keep connection alive unless specified or timeouted
+		regex := regexp.MustCompile("(?i)keep-alive")
+		match := regex.Match([]byte(req.GetConnection()))
+		if !match || protocol == p.HTTP_1 {
+			log.Printf("keep-alive not supported, closing the connection %s", connection.RemoteAddr())
+			keepOpen = false
+		} else {
+			res.AddHeader("Keep-Alive", "timeout=5")
+			res.AddHeader("Keep-Alive", "max=5")
+			keepOpen = true
+		}
+		uri := req.GetUri()
+		t := req.GetHeader().Get("If-Modified-Since")
+		// try to open the file
+		basepath, file, isDir, err := fs.TryOpen(uri)
+		// file does not exist, call coresponding handler
+		if err != nil {
+			log.Println(err)
+			res = NotFoundHadnler(res, protocol)
+		} else {
+			// request is asking if file has been modified, call coresponding handler
+			if t != "" {
+				res = IfModSinceHandler(t, res, file, isDir, basepath, uri, protocol)
+			} else {
+				// call diretory handler
+				if isDir {
+					res = DirHandler(res, basepath, file, uri, protocol)
+					// call file handler
+				} else {
+					res = FileHandler(res, file, protocol)
+				}
+			}
+
+		}
+	}
+
+	return res, keepOpen
+}
+
 // response handler for directory
 // it will try to render index.html first if it exists
 // otherwise, serve the directory content as response body
-func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri string) (response httpParser.Response) {
+func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri string, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
 	// close directory after use
 	defer dir.Close()
 
@@ -127,7 +138,7 @@ func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 	if !os.IsNotExist(err) {
 		// handle permission deny
 		if os.IsPermission(err) {
-			res = PermDenyHandler(res)
+			res = PermDenyHandler(res, protocol)
 			return res
 		}
 		log.Printf("DirHandler: %s", err)
@@ -179,14 +190,14 @@ func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 		res.SetHeader("Last-Modified", LastModTime.Format("01-02-2006 15:04:05"))
 		return res
 	} else {
-		return FileHandler(res, indexFile)
+		return FileHandler(res, indexFile, protocol)
 	}
 
 }
 
 // response handler for file
 // load the file content as response body
-func FileHandler(res httpParser.Response, file *os.File) (response httpParser.Response) {
+func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
 	// close file after use
 	defer file.Close()
 
@@ -198,7 +209,7 @@ func FileHandler(res httpParser.Response, file *os.File) (response httpParser.Re
 	body := buf.Bytes()
 
 	res.SetBody(body)
-	res.SetProtocol(p.HTTP_1_1)
+	res.SetProtocol(protocol)
 	res.SetStatus(200, "OK")
 	mtype := mimetype.Detect(body[:512])
 	res.AddHeader("Content-Type", mtype.String())
@@ -213,7 +224,7 @@ func FileHandler(res httpParser.Response, file *os.File) (response httpParser.Re
 }
 
 // response handler when the given file is not found
-func NotFoundHadnler(res httpParser.Response) (response httpParser.Response) {
+func NotFoundHadnler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
 	body := "<html>\r\n"
 	body += "<head>\r\n"
 	body += "<title>Error response</title>\r\n"
@@ -227,7 +238,7 @@ func NotFoundHadnler(res httpParser.Response) (response httpParser.Response) {
 	body += "</html>\r\n"
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
-	res.SetProtocol(p.HTTP_1_1)
+	res.SetProtocol(protocol)
 	res.SetStatus(404, "File not found")
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
@@ -238,7 +249,7 @@ func NotFoundHadnler(res httpParser.Response) (response httpParser.Response) {
 // response handler when user is asking if file has been modified
 // return 304 if it is not, otherwise call FileHandler/DirHandler
 // accordingly to serve the updated content
-func IfModSinceHandler(t string, res httpParser.Response, file *os.File, isDir bool, basePath string, uri string) (response httpParser.Response) {
+func IfModSinceHandler(t string, res httpParser.Response, file *os.File, isDir bool, basePath string, uri string, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
 	IfModSince, err := time.Parse(time.RFC1123, t)
 	if err != nil {
 		log.Printf("Cannot parse date: %s", err)
@@ -251,9 +262,9 @@ func IfModSinceHandler(t string, res httpParser.Response, file *os.File, isDir b
 	updated := LastModTime.After(IfModSince)
 	if updated {
 		if isDir {
-			res = DirHandler(res, basePath, file, uri)
+			res = DirHandler(res, basePath, file, uri, protocol)
 		} else {
-			res = FileHandler(res, file)
+			res = FileHandler(res, file, protocol)
 		}
 	} else {
 		body := "<html>\r\n"
@@ -269,7 +280,7 @@ func IfModSinceHandler(t string, res httpParser.Response, file *os.File, isDir b
 		body += "</html>\r\n"
 		log.Printf("\r\n%s", []byte(body))
 		res.SetBody([]byte(body))
-		res.SetProtocol(p.HTTP_1_1)
+		res.SetProtocol(protocol)
 		res.SetStatus(304, "Not Modified")
 		res.AddHeader("Content-Type", "text.html")
 		res.AddHeader("Content-Type", "charset=utf-8")
@@ -279,7 +290,7 @@ func IfModSinceHandler(t string, res httpParser.Response, file *os.File, isDir b
 }
 
 // response handler when user has not access to the file
-func PermDenyHandler(res httpParser.Response) (response httpParser.Response) {
+func PermDenyHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
 	body := "<html>\r\n"
 	body += "<head>\r\n"
 	body += "<title>Error response</title>\r\n"
@@ -293,7 +304,7 @@ func PermDenyHandler(res httpParser.Response) (response httpParser.Response) {
 	body += "</html>\r\n"
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
-	res.SetProtocol(p.HTTP_1_1)
+	res.SetProtocol(protocol)
 	res.SetStatus(403, "Forbidden")
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
@@ -302,7 +313,7 @@ func PermDenyHandler(res httpParser.Response) (response httpParser.Response) {
 }
 
 // response handler when use sent any request other than GET
-func InvalidMethodHandler(res httpParser.Response) (response httpParser.Response) {
+func InvalidMethodHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
 	body := "<html>\r\n"
 	body += "<head>\r\n"
 	body += "<title>Error response</title>\r\n"
@@ -316,7 +327,7 @@ func InvalidMethodHandler(res httpParser.Response) (response httpParser.Response
 	body += "</html>\r\n"
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
-	res.SetProtocol(p.HTTP_1_1)
+	res.SetProtocol(protocol)
 	res.SetStatus(405, "Method Not Allowed")
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")

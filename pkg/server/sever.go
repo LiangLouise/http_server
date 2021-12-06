@@ -74,7 +74,7 @@ func (s *server) ListenRequest() {
 		// New Connection, now increase wait group by 1
 		s.wg.Add(1)
 		go func() {
-			router.SimpleHandler(s.quit, c, s.fs)
+			router.SimpleHandler(s.quit, c, s.fs, s.Protocol)
 			s.wg.Done()
 		}()
 	}

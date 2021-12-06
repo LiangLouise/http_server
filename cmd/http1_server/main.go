@@ -18,8 +18,8 @@ func main() {
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	args := os.Args
-	if len(args) != 3 {
-		fmt.Println("Please give host and port to bind")
+	if len(args) != 4 {
+		fmt.Println("Please give host, port to bind along with the protocol version (1.0/1.1)")
 		return
 	}
 
@@ -28,7 +28,16 @@ func main() {
 		log.Fatalf("file system: %s\n", err)
 	}
 
-	s, err := server.MakeServer(args[1], args[2], httpProto.HTTP_1_1, fs)
+	var protocol httpProto.HTTP_PROTOCOL_VERSION
+	if args[3] == "1.0" {
+		protocol = httpProto.HTTP_1
+	} else if args[3] == "1.1" {
+		protocol = httpProto.HTTP_1_1
+	} else {
+		fmt.Println("Please enter correct protocol version (1.0 or 1.1)")
+		return
+	}
+	s, err := server.MakeServer(args[1], args[2], protocol, fs)
 	if err != nil {
 		log.Fatalf("listen: %s\n", err)
 	}
