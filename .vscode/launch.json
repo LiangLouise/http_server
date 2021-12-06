@@ -11,8 +11,7 @@
             "mode": "debug",
             "program": "${workspaceFolder}/cmd/http1_server/main.go",
             "args": [
-                "127.0.0.1",
-                "8080"
+                "mainconfig.yml"
             ],
             "cwd": "${workspaceFolder}"
         }

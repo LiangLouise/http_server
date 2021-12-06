@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/liangLouise/http_server/pkg/config"
 	"github.com/liangLouise/http_server/pkg/fsService"
-	"github.com/liangLouise/http_server/pkg/httpProto"
 	"github.com/liangLouise/http_server/pkg/server"
 )
 
@@ -18,8 +18,8 @@ func main() {
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	args := os.Args
-	if len(args) != 3 {
-		fmt.Println("Please give host and port to bind")
+	if len(args) != 2 {
+		fmt.Println("Please give Path to config yaml file")
 		return
 	}
 
@@ -28,7 +28,12 @@ func main() {
 		log.Fatalf("file system: %s\n", err)
 	}
 
-	s, err := server.MakeServer(args[1], args[2], httpProto.HTTP_1_1, fs)
+	config, err := config.LoadConfig(args[1])
+	if err != nil {
+		log.Fatalf("loading configs: %s\n", err)
+	}
+
+	s, err := server.MakeServer(config, fs)
 	if err != nil {
 		log.Fatalf("listen: %s\n", err)
 	}
