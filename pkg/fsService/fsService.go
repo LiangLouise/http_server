@@ -95,15 +95,15 @@ func (fs *FsService) TryOpen(path string) (cleanPath string, file *os.File, isDi
 	return cleanPath, f, info.IsDir(), nil
 }
 
-func (fs *FsService) WriteFileContent(file *os.File, outCh chan []byte) (start bool, err error) {
+func (fs *FsService) WriteFileContent(file *os.File, outCh chan []byte) (start bool, size int64, err error) {
 
 	info, err := file.Stat()
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
 	if info.IsDir() {
-		return false, errors.New("not a file")
+		return false, 0, errors.New("not a file")
 	}
 
 	go func() {
@@ -128,7 +128,7 @@ func (fs *FsService) WriteFileContent(file *os.File, outCh chan []byte) (start b
 		close(outCh)
 	}()
 
-	return true, nil
+	return true, info.Size(), nil
 }
 
 func (fs *FsService) WriteDirContent(file *os.File, outCh chan string) (start bool, err error) {
@@ -172,5 +172,12 @@ func (fs *FsService) GetDirLen(file *os.File) (length int) {
 		log.Printf("Error: %s", err)
 		return
 	}
+
+	// seek to the start of the file, so when we
+	// Need actaual printing
+	if _, err := file.Seek(0, 0); err != nil {
+		panic(err)
+	}
+
 	return len(files)
 }
