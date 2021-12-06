@@ -60,20 +60,15 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 			}
 
 			uri := req.GetUri()
-			if uri == "/" {
-				if fs.HasIndex {
-					res.SetBody(fs.Cache["index.html"])
-				}
-			}
-			_, file, isDir, err := fs.TryOpen(uri)
+			cPath, file, isDir, err := fs.TryOpen(uri)
 			if err != nil {
 				log.Println(err)
 				res = NotFoundHadnler(res)
 			} else {
 				if isDir {
-					res = DirHandler(res, fs, file, uri)
+					res = DirHandler(res, cPath, file, uri)
 				} else {
-					res = FileHandler(res, fs, file)
+					res = FileHandler(res, file)
 				}
 			}
 
@@ -87,34 +82,55 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 
 }
 
-func DirHandler(res httpParser.Response, fs *fsService.FsService, dir *os.File, uri string) (response httpParser.Response) {
-	entries := make(chan string)
-	_, err := fs.WriteDirContent(dir, entries)
-	if err != nil {
-		log.Println(err)
+func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri string) (response httpParser.Response) {
+
+	indexFile, err := fsService.TryOpenIndex(basePath)
+
+	// exist but failed to open, special status code is required
+	if !os.IsNotExist(err) {
+		log.Printf("DirHandler: %s", err)
 		return
 	}
-	body := "<pre>\r\n"
-	body += "<h1>Directory listing for "
-	body += uri + "</h1>\r\n<hr>\r\n"
 
-	for entry := range entries {
-		body += "<a href=\"" + entry + "\">" + entry + "</a>\r\n"
+	if indexFile == nil {
+
+		body := "<pre>\r\n"
+		body += "<h1>Directory listing for "
+		body += uri + "</h1>\r\n<hr>\r\n"
+
+		files, err := dir.ReadDir(-1)
+		if err != nil {
+			log.Printf("DirHandler: %s", err)
+			return
+		}
+
+		// Write the dir entries to output channel
+		for _, file := range files {
+			fileName := file.Name()
+			if file.IsDir() {
+				fileName += "/"
+			}
+			body += "<a href=\"" + fileName + "\">" + fileName + "</a>\r\n"
+
+		}
+
+		body += "</hr>\r\n"
+		body += "</pre>\r\n"
+		log.Printf("\r\n%s", []byte(body))
+		res.SetBody([]byte(body))
+		res.SetProtocol(p.HTTP_1_1)
+		res.SetStatus(200, "OK")
+		res.AddHeader("Content-Type", "text.html")
+		res.AddHeader("Content-Type", "charset=utf-8")
+		res.AddHeader("Content-Length", strconv.Itoa(len(body)))
+		return res
+	} else {
+		return FileHandler(res, indexFile)
 	}
 
-	body += "</hr>\r\n"
-	body += "</pre>\r\n"
-	log.Printf("\r\n%s", []byte(body))
-	res.SetBody([]byte(body))
-	res.SetProtocol(p.HTTP_1_1)
-	res.SetStatus(200, "OK")
-	res.AddHeader("Content-Type", "text.html")
-	res.AddHeader("Content-Type", "charset=utf-8")
-	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
-	return res
 }
 
-func FileHandler(res httpParser.Response, fs *fsService.FsService, file *os.File) (response httpParser.Response) {
+func FileHandler(res httpParser.Response, file *os.File) (response httpParser.Response) {
 
 	defer file.Close()
 
