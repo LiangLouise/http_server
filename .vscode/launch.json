@@ -11,8 +11,10 @@
             "mode": "debug",
             "program": "${workspaceFolder}/cmd/http1_server/main.go",
             "args": [
-                "8000"
-            ]
+                "127.0.0.1",
+                "8080"
+            ],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
