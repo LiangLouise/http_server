@@ -35,6 +35,7 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 		for _, req := range reqs {
 			log.Printf("Address: %s", connection.RemoteAddr())
 			var res httpParser.Response
+			res.InitHeader()
 			// HTTP/1.1 keep connection alive unless specified or timeouted
 			regex := regexp.MustCompile("(?i)keep-alive")
 			match := regex.Match([]byte(req.GetConnection()))
@@ -83,7 +84,6 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 				body += "</pre>\r\n"
 				log.Printf("\r\n%s", []byte(body))
 				res.SetBody([]byte(body))
-				res.InitHeader()
 				res.SetProtocol(p.HTTP_1_1)
 				res.SetStatus(200, "OK")
 				res.AddHeader("Content-Type", "text.html")
@@ -105,7 +105,6 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 				}
 
 				res.SetBody(body)
-				res.InitHeader()
 				res.SetProtocol(p.HTTP_1_1)
 				res.SetStatus(200, "OK")
 				res.AddHeader("Content-Type", http.DetectContentType([]byte(body)))

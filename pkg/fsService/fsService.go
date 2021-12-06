@@ -25,6 +25,8 @@ type FSService interface {
 	WriteDirContent(file *os.File, outCh chan string)
 }
 
+// Create a new fs serverice instance. The working
+// directory will be the same as server running dir
 func MakeFsService() (fs *FsService, err error) {
 
 	CWD, err := os.Getwd()
@@ -54,36 +56,49 @@ func MakeFsService() (fs *FsService, err error) {
 }
 
 // Possible input
-// 1. abs path /var/etc/...
+// 		1. abs path /var/etc/...
+// 		2. normal relatvie path a/b/c
+// cases to clean
+// 		1. abnormal relative path ../../a/../b/c
+// 		2. abnormal relative path ../..
 func (fs *FsService) TryOpen(path string) (cleanPath string, file *os.File, isDir bool, err error) {
 
-	if path != "/" {
-		path = strings.Replace(path, "/", "", 1)
-	}
 	isDir = false
+	path, err = url.QueryUnescape(path)
+
+	if err != nil {
+		return "", nil, isDir, err
+	}
+	if !strings.HasPrefix(path, "/") {
+		return "", nil, isDir, err
+	}
+
+	// Remove the trailling slash,
+	// So that file system can know it's a
+	// relative path, which must be under cwd
+	path = strings.Replace(path, "/", "", 1)
 
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return "", nil, isDir, err
 	}
-	decodedPath, err := url.QueryUnescape(absPath)
-	if err != nil {
-		return "", nil, isDir, err
-	}
-	if path == "/" {
-		decodedPath = fs.CWD + path
-	}
 
-	if !strings.HasPrefix(decodedPath, fs.CWD+"/") {
+	// Make sure that the parsed and cleaned
+	// Abs path align with cwd, i.e.,
+	// Input path: "\/\/\/\/\/" -> absPath: "\/"
+	// But if absPath != $(pwd), we still need to reject
+	// As the Rel will try its best to find a route match
+	// target and base
+	if !strings.HasPrefix(absPath, fs.CWD+"/") {
 		return "", nil, isDir, errors.New("no such File")
 	}
 
-	cleanPath, err = filepath.Rel(fs.CWD, decodedPath)
+	cleanPath, err = filepath.Rel(fs.CWD, absPath)
 	if err != nil {
 		return "", nil, isDir, err
 	}
 
-	f, err := os.Open(decodedPath)
+	f, err := os.Open(absPath)
 	if err != nil {
 		return "", nil, isDir, err
 	}
@@ -164,20 +179,4 @@ func (fs *FsService) WriteDirContent(file *os.File, outCh chan string) (start bo
 	}()
 
 	return true, nil
-}
-
-func (fs *FsService) GetDirLen(file *os.File) (length int) {
-	files, err := file.ReadDir(-1)
-	if err != nil {
-		log.Printf("Error: %s", err)
-		return
-	}
-
-	// seek to the start of the file, so when we
-	// Need actaual printing
-	if _, err := file.Seek(0, 0); err != nil {
-		panic(err)
-	}
-
-	return len(files)
 }
