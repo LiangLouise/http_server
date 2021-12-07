@@ -205,6 +205,13 @@ func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCO
 	// close file after use
 	defer file.Close()
 
+	// Detect file Mime Type
+	mtype, err := mimetype.DetectReader(file)
+	if err != nil {
+		log.Printf("FileHandler: %s", err)
+	}
+	file.Seek(0, io.SeekStart)
+
 	buf := bytes.NewBuffer(nil)
 	size, err := io.Copy(buf, file)
 	if err != nil {
@@ -215,7 +222,7 @@ func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCO
 	res.SetBody(body)
 	res.SetProtocol(protocol)
 	res.SetStatus(int(p.OK_CODE), string(p.OK_TEXT))
-	mtype := mimetype.Detect(body[:512])
+
 	res.AddHeader("Content-Type", mtype.String())
 	res.AddHeader("Content-Length", strconv.FormatInt(size, 10))
 	fileinfo, err := os.Stat(file.Name())
