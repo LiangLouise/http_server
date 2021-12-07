@@ -112,6 +112,63 @@ When it's time
 
 ## Work Contribution
 
+- Roy
+  - Full implementation of `main.go`
+  - Created skeleton of  `router.go`.
+  - Full implementation of `server.go`
+  - Created configuration files: `go.mod`, `go.sum`, `mainconfig.yml`, `config.go`.
+  - Full implementation `fsService.go` 
+  - Implementation of `httpProto.go` (http protocol part)
+  - Helped in debugging the `router.go` and the `requestParser.go`
+  - Created workflow image
+- Cheng
+  - Full implementation of `requestParser.go`
+  - Full implementation of `responseParser.go`
+  - Implementation of `httpProto.go` (response status code and text parts)
+  - Major implementation of `router.go`
+
 ## Setup And Running
+
+#### Prerequisite
+
+Download and Install [Golang](https://go.dev/dl/)
+
+#### Compile
+
+Under root of project directory, run:
+
+```shell
+http_server user$ make
+```
+
+It will create a folder `bin` and an executable file `http1_server` inside it.
+
+#### Configuration
+
+Here is a sample mainconfig.yml, you can change the configuration to test server's performance and features
+
+```yaml
+Server:
+  SERVER_PORT: 8080
+  SERVER_HOST: "127.0.0.1"
+  HTTP_VERSION: "HTTP/1.1"
+
+RunTime:
+  MAX_CONCURRENT_CONNECTIONS: 1024
+  ENABLE_PESISTANT: True
+  ENABLE_PIPELINING: True
+  MAX_PIPELINING_NUMBER: 10
+  TIMEOUT_DURATION: 10
+```
+
+
+
+#### Run
+
+```shell
+user$ ./path_to_executable ./path_to_mainconfig.yml
+```
+
+
 
 ## Implementation Testing
