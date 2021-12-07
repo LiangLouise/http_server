@@ -6,7 +6,7 @@ As we stated in our proposal, we intially planned to
 
 * support http 1.0 + 1.1 and pipelining;
 * serve multiple types of files from the host machine, including .html, .css, .js, .txt, and .jpg;
-* support conditional Get requests (If-Modified-Since Request)
+* support conditional Get requests (If-Modified-Since Request);
 * support http 2 over TCP if time allows.
 
 We managed to accomplished the first two. Thus this is a HTTP server can serve the files over HTTP/1.0 or 1.1 protocol.
