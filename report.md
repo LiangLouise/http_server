@@ -72,6 +72,7 @@ The work flow of the server can be illustrated as below:
 ## Work Contribution
 
 - Roy
+  - Created `Makefile`
   - Full implementation of `main.go`
   - Created skeleton of  `router.go`.
   - Full implementation of `server.go`
@@ -131,3 +132,6 @@ user$ ./path_to_executable ./path_to_mainconfig.yml
 
 
 ## Implementation Testing
+
+#### HTTP SERVER 1.0
+
