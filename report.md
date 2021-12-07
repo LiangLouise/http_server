@@ -102,25 +102,25 @@ for {
 
 After the handler go routine started, handler will read HTTP requests from the TCP connection and handle the connection depending on HTTP version and if enabling persistant conntion & pipelining or not:
 
-* If using HTTP/1.0 or HTTP/1.1 without persistant conntion, handler will only read request **once** from the TCP connection and write response **once** to the connection, then this connection will be closed;
+* If using HTTP/1.0 or HTTP/1.1 without persistant conntion, handler will only read request **once** from the TCP connection and write response **once** to the connection, then this connection will be closed. As for determing the MIME type of the file, we used a convinient library [mimetype](https://github.com/gabriel-vasile/mimetype) to do the detection, which can handle .html, .css, .js, .txt, .jpg and [more](https://github.com/gabriel-vasile/mimetype/blob/master/supported_mimes.md);
 
 * If using HTTP/1.0 with persistant conntion, handler will read first request (stop readding when reaching an empty line `\r\n` ) from the TCP connection and write a response to, then wait for next request until reaching timeout or client decides to close the connection;
 
 * If using HTTP/1.0 with persistant conntion and pipelining, server will try to read entire incoming TCP packet and parse multiple HTTP requets from it, then send back reponse for each of request got parsed. After all response are sent, this connection will wait for next requests until reaching timeout or client decides to close the connection.
 
-When it's time 
+When it's time to shutdown the server, server will stop listening new TCP connection and signal all running hanlder go rutines to close its TCP connection and returns. After all hanlders returned, server will stop binding the port and exit.
 
 ## Work Contribution
 
-- Roy
+- Jiasong
   - Full implementation of `main.go`
   - Created skeleton of  `router.go`.
   - Full implementation of `server.go`
-  - Created configuration files: `go.mod`, `go.sum`, `mainconfig.yml`, `config.go`.
+  - Created configuration loading utils: `mainconfig.yml`, `config.go`.
   - Full implementation `fsService.go` 
   - Implementation of `httpProto.go` (http protocol part)
   - Helped in debugging the `router.go` and the `requestParser.go`
-  - Created workflow image
+  - Designed workflow
 - Cheng
   - Full implementation of `requestParser.go`
   - Full implementation of `responseParser.go`
@@ -129,23 +129,23 @@ When it's time
 
 ## Setup And Running
 
-#### Prerequisite
+### Prerequisite
 
 Download and Install [Golang](https://go.dev/dl/)
 
-#### Compile
+### Compile
 
-Under root of project directory, run:
+Under root of project repo, run:
 
 ```shell
-http_server user$ make
+$ make
 ```
 
 It will create a folder `bin` and an executable file `http1_server` inside it.
 
-#### Configuration
+### Configuration
 
-Here is a sample mainconfig.yml, you can change the configuration to test server's performance and features
+Here is the config yaml file, you can change the configuration to test server's performance and features
 
 ```yaml
 Server:
@@ -161,12 +161,12 @@ RunTime:
   TIMEOUT_DURATION: 10
 ```
 
+There is also a sample yaml config file `mainconfig.yml` at the root of the repo you could use.
 
-
-#### Run
+### Run
 
 ```shell
-user$ ./path_to_executable ./path_to_mainconfig.yml
+$ ./bin/http1_server <./path_to_mainconfig.yml>
 ```
 
 
