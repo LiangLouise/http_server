@@ -1,5 +1,6 @@
 package httpProto
 
+// Consts for HTTP Protocol version in Message start line
 type HTTP_PROTOCOL_VERSION string
 
 const (
@@ -7,6 +8,7 @@ const (
 	HTTP_1_1 HTTP_PROTOCOL_VERSION = "HTTP/1.1"
 )
 
+// Consts for HTTP status code used in this Project
 type HTTP_STATUS_CODE int
 
 const (
@@ -18,6 +20,7 @@ const (
 	INTERNAL_SERVER_ERROR_CODE HTTP_STATUS_CODE = 500
 )
 
+// Consts for HTTP status text used in this Project
 type HTTP_STATUS_TEXT string
 
 const (

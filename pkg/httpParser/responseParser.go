@@ -9,8 +9,8 @@ import (
 )
 
 type Response struct {
-	statusCode int
-	statusText string
+	statusCode p.HTTP_STATUS_CODE
+	statusText p.HTTP_STATUS_TEXT
 	header     textproto.MIMEHeader
 	body       []byte
 	protocol   p.HTTP_PROTOCOL_VERSION // "HTTP/1.1"
@@ -20,9 +20,25 @@ func (res *Response) InitHeader() {
 	res.header = textproto.MIMEHeader{}
 }
 
-func (res *Response) SetStatus(statusCode int, statusText string) {
+func (res *Response) SetStatus(statusCode p.HTTP_STATUS_CODE) {
+	var sText p.HTTP_STATUS_TEXT
+	switch statusCode {
+	case p.OK_CODE:
+		sText = p.OK_TEXT
+	case p.NOT_MODIFIED_CODE:
+		sText = p.NOT_MODIFIED_TEXT
+	case p.FORBIDDEN_CODE:
+		sText = p.FORBIDDEN_TEXT
+	case p.NOT_FOUND_CODE:
+		sText = p.NOT_FOUND_TEXT
+	case p.METHOD_NOT_ALLOWED_CODE:
+		sText = p.METHOD_NOT_ALLOWED_TEXT
+	default:
+		statusCode = p.INTERNAL_SERVER_ERROR_CODE
+		sText = p.INTERNAL_SERVER_ERROR_TEXT
+	}
 	res.statusCode = statusCode
-	res.statusText = statusText
+	res.statusText = sText
 }
 
 func (res *Response) AddHeader(key, value string) {
@@ -44,7 +60,7 @@ func (res *Response) SetProtocol(protocol p.HTTP_PROTOCOL_VERSION) {
 func (res *Response) ParseResponse() string {
 	var resText string
 	var values string
-	resText += string(res.protocol) + " " + strconv.Itoa(res.statusCode) + " " + res.statusText + "\r\n"
+	resText += string(res.protocol) + " " + strconv.Itoa(int(res.statusCode)) + " " + string(res.statusText) + "\r\n"
 	for k, v := range res.header {
 		values = ""
 		if len(v) > 1 {

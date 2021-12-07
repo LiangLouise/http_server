@@ -1,3 +1,15 @@
+// The handler logics for handling incomming HTTP request
+//
+// Mainly three types of possible responses
+//
+// - client sends a directory path, and there is no index.html file,
+// so server needs to send back the list of the dir content, i.e. `/a/`
+//
+// - client sends a directory path, and there is an index.html file,
+// so server needs to send back the content of index.html
+//
+// - client sends a file path, server will try to read the file and send
+// back file content with correct MIME type
 package router
 
 import (
@@ -19,9 +31,6 @@ import (
 	"github.com/liangLouise/http_server/pkg/httpParser"
 	p "github.com/liangLouise/http_server/pkg/httpProto"
 )
-
-type router struct {
-}
 
 // this is the main logic of the connection handler.
 // It will call different helper handler to further handle the request
@@ -67,7 +76,7 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 		}
 		reqs = reqs[:int(maxReq)]
 		for _, req := range reqs {
-			res, keepOpen := SingleReqHandler(connection, req, fs, config.Server.Version)
+			res, keepOpen := singleReqHandler(connection, req, fs, config.Server.Version)
 
 			// render the response
 			fmt.Fprintf(connection, "%s", res.ParseResponse())
@@ -81,14 +90,15 @@ func SimpleHandler(close chan interface{}, connection net.Conn, fs *fsService.Fs
 
 }
 
-func SingleReqHandler(connection net.Conn, req httpParser.Request, fs *fsService.FsService, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response, persistence bool) {
+func singleReqHandler(connection net.Conn, req httpParser.Request, fs *fsService.FsService, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response, persistence bool) {
 	keepOpen := true
 	log.Printf("Address: %s", connection.RemoteAddr())
 	var res httpParser.Response
 	res.InitHeader()
+	res.SetProtocol(protocol)
 	// only GET method is allowed
 	if req.GetMethod() != "GET" {
-		res = InvalidMethodHandler(res, protocol)
+		res = onErrorHandler(res, p.METHOD_NOT_ALLOWED_CODE)
 	} else {
 		// HTTP/1.1 keep connection alive unless specified or timeouted
 		regex := regexp.MustCompile("(?i)keep-alive")
@@ -108,18 +118,18 @@ func SingleReqHandler(connection net.Conn, req httpParser.Request, fs *fsService
 		// file does not exist, call coresponding handler
 		if err != nil {
 			log.Println(err)
-			res = NotFoundHadnler(res, protocol)
+			res = onErrorHandler(res, p.NOT_FOUND_CODE)
 		} else {
 			// request is asking if file has been modified, call coresponding handler
 			if t != "" {
-				res = IfModSinceHandler(t, res, file, isDir, basepath, uri, protocol)
+				res = IfModSinceHandler(t, res, file, isDir, basepath, uri)
 			} else {
 				// call diretory handler
 				if isDir {
-					res = DirHandler(res, basepath, file, uri, protocol)
+					res = dirHandler(res, basepath, file, uri)
 					// call file handler
 				} else {
-					res = FileHandler(res, file, protocol)
+					res = fileHandler(res, file)
 				}
 			}
 
@@ -132,7 +142,7 @@ func SingleReqHandler(connection net.Conn, req httpParser.Request, fs *fsService
 // response handler for directory
 // it will try to render index.html first if it exists
 // otherwise, serve the directory content as response body
-func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri string, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
+func dirHandler(res httpParser.Response, basePath string, dir *os.File, uri string) (response httpParser.Response) {
 	// close directory after use
 	defer dir.Close()
 
@@ -142,7 +152,7 @@ func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 	if !os.IsNotExist(err) && err != nil {
 		// handle permission deny
 		if os.IsPermission(err) {
-			res = PermDenyHandler(res, protocol)
+			res = onErrorHandler(res, p.FORBIDDEN_CODE)
 			return res
 		}
 		log.Printf("DirHandler: %s", err)
@@ -182,7 +192,7 @@ func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 		log.Printf("\r\n%s", []byte(body))
 		res.SetBody([]byte(body))
 		res.SetProtocol(p.HTTP_1_1)
-		res.SetStatus(int(p.OK_CODE), string(p.OK_TEXT))
+		res.SetStatus(p.OK_CODE)
 		res.AddHeader("Content-Type", "text.html")
 		res.AddHeader("Content-Type", "charset=utf-8")
 		res.AddHeader("Content-Length", strconv.Itoa(len(body)))
@@ -194,14 +204,14 @@ func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 		res.SetHeader("Last-Modified", LastModTime.Format(time.RFC1123))
 		return res
 	} else {
-		return FileHandler(res, indexFile, protocol)
+		return fileHandler(res, indexFile)
 	}
 
 }
 
 // response handler for file
 // load the file content as response body
-func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
+func fileHandler(res httpParser.Response, file *os.File) (response httpParser.Response) {
 	// close file after use
 	defer file.Close()
 
@@ -209,7 +219,7 @@ func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCO
 	mtype, err := mimetype.DetectReader(file)
 	if err != nil {
 		log.Printf("FileHandler: %s", err)
-		res = InternalErrHandler(res, protocol)
+		res = onErrorHandler(res, p.INTERNAL_SERVER_ERROR_CODE)
 		return res
 	}
 	file.Seek(0, io.SeekStart)
@@ -218,14 +228,13 @@ func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCO
 	size, err := io.Copy(buf, file)
 	if err != nil {
 		log.Printf("FileHandler: %s", err)
-		res = InternalErrHandler(res, protocol)
+		res = onErrorHandler(res, p.INTERNAL_SERVER_ERROR_CODE)
 		return res
 	}
 	body := buf.Bytes()
 
 	res.SetBody(body)
-	res.SetProtocol(protocol)
-	res.SetStatus(int(p.OK_CODE), string(p.OK_TEXT))
+	res.SetStatus(p.OK_CODE)
 
 	res.AddHeader("Content-Type", mtype.String())
 	res.AddHeader("Content-Length", strconv.FormatInt(size, 10))
@@ -238,8 +247,53 @@ func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCO
 	return res
 }
 
-// response handler when the given file is not found
-func NotFoundHadnler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
+// response handler when user is asking if file has been modified
+// return 304 if it is not, otherwise call FileHandler/DirHandler
+// accordingly to serve the updated content
+func IfModSinceHandler(t string, res httpParser.Response, file *os.File, isDir bool, basePath string, uri string) (response httpParser.Response) {
+	IfModSince, err := time.Parse(time.RFC1123, t)
+	if err != nil {
+		log.Printf("Cannot parse date: %s", err)
+		res = onErrorHandler(res, p.FORBIDDEN_CODE)
+		return res
+	}
+	fileinfo, err := os.Stat(file.Name())
+	if err != nil {
+		log.Printf("Cannot get file info: %s", err)
+		res = onErrorHandler(res, p.FORBIDDEN_CODE)
+		return res
+	}
+	LastModTime := fileinfo.ModTime()
+	updated := LastModTime.After(IfModSince)
+	if updated {
+		if isDir {
+			res = dirHandler(res, basePath, file, uri)
+		} else {
+			res = fileHandler(res, file)
+		}
+	} else {
+		body := ""
+		log.Printf("\r\n%s", []byte(body))
+		res.SetBody([]byte(body))
+		res.SetStatus(p.NOT_MODIFIED_CODE)
+		res.AddHeader("Content-Type", "text.html")
+		res.AddHeader("Content-Type", "charset=utf-8")
+		res.AddHeader("Content-Length", strconv.Itoa(len(body)))
+	}
+	return res
+}
+
+// response handler when there is an error occuring
+//
+// 1. when use sent any request other than GET
+//
+// 2. when user has not access to the file
+//
+// 3. when interal server error happens
+//
+// 4. when requested file not found
+func onErrorHandler(res httpParser.Response, sCode p.HTTP_STATUS_CODE) (response httpParser.Response) {
+
 	body := "<html>\r\n"
 	body += "<head>\r\n"
 	body += "<title>Error response</title>\r\n"
@@ -253,123 +307,7 @@ func NotFoundHadnler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) 
 	body += "</html>\r\n"
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
-	res.SetProtocol(protocol)
-	res.SetStatus(int(p.NOT_FOUND_CODE), string(p.NOT_FOUND_TEXT))
-	res.AddHeader("Content-Type", "text.html")
-	res.AddHeader("Content-Type", "charset=utf-8")
-	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
-	return res
-}
-
-// response handler when user is asking if file has been modified
-// return 304 if it is not, otherwise call FileHandler/DirHandler
-// accordingly to serve the updated content
-func IfModSinceHandler(t string, res httpParser.Response, file *os.File, isDir bool, basePath string, uri string, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
-	IfModSince, err := time.Parse(time.RFC1123, t)
-	if err != nil {
-		log.Printf("Cannot parse date: %s", err)
-		res = PermDenyHandler(res, protocol)
-		return res
-	}
-	fileinfo, err := os.Stat(file.Name())
-	if err != nil {
-		log.Printf("Cannot get file info: %s", err)
-		res = PermDenyHandler(res, protocol)
-		return res
-	}
-	LastModTime := fileinfo.ModTime()
-	updated := LastModTime.After(IfModSince)
-	if updated {
-		if isDir {
-			res = DirHandler(res, basePath, file, uri, protocol)
-		} else {
-			res = FileHandler(res, file, protocol)
-		}
-	} else {
-		body := "<html>\r\n"
-		body += "<head>\r\n"
-		body += "<title>Response Message</title>\r\n"
-		body += "</head>\r\n"
-
-		body += "<h1>Response Message</h1>\r\n"
-		body += "<p>Status code: 304</p>\r\n"
-		body += "<p>Message: File is not modified.</p>\r\n"
-		body += "<body>\r\n"
-		body += "</body>\r\n"
-		body += "</html>\r\n"
-		log.Printf("\r\n%s", []byte(body))
-		res.SetBody([]byte(body))
-		res.SetProtocol(protocol)
-		res.SetStatus(int(p.NOT_MODIFIED_CODE), string(p.NOT_MODIFIED_TEXT))
-		res.AddHeader("Content-Type", "text.html")
-		res.AddHeader("Content-Type", "charset=utf-8")
-		res.AddHeader("Content-Length", strconv.Itoa(len(body)))
-	}
-	return res
-}
-
-// response handler when user has not access to the file
-func PermDenyHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
-	body := "<html>\r\n"
-	body += "<head>\r\n"
-	body += "<title>Error response</title>\r\n"
-	body += "</head>\r\n"
-
-	body += "<h1>Error response</h1>\r\n"
-	body += "<p>Error code: 403</p>\r\n"
-	body += "<p>Message: Permission Denied</p>\r\n"
-	body += "<body>\r\n"
-	body += "</body>\r\n"
-	body += "</html>\r\n"
-	log.Printf("\r\n%s", []byte(body))
-	res.SetBody([]byte(body))
-	res.SetProtocol(protocol)
-	res.SetStatus(int(p.FORBIDDEN_CODE), string(p.FORBIDDEN_TEXT))
-	res.AddHeader("Content-Type", "text.html")
-	res.AddHeader("Content-Type", "charset=utf-8")
-	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
-	return res
-}
-
-// response handler when use sent any request other than GET
-func InvalidMethodHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
-	body := "<html>\r\n"
-	body += "<head>\r\n"
-	body += "<title>Error response</title>\r\n"
-	body += "</head>\r\n"
-
-	body += "<h1>Error response</h1>\r\n"
-	body += "<p>Error code: 405</p>\r\n"
-	body += "<p>Message: Method Not Allowed</p>\r\n"
-	body += "<body>\r\n"
-	body += "</body>\r\n"
-	body += "</html>\r\n"
-	log.Printf("\r\n%s", []byte(body))
-	res.SetBody([]byte(body))
-	res.SetProtocol(protocol)
-	res.SetStatus(int(p.METHOD_NOT_ALLOWED_CODE), string(p.METHOD_NOT_ALLOWED_TEXT))
-	res.AddHeader("Content-Type", "text.html")
-	res.AddHeader("Content-Type", "charset=utf-8")
-	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
-	return res
-}
-
-func InternalErrHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
-	body := "<html>\r\n"
-	body += "<head>\r\n"
-	body += "<title>Error response</title>\r\n"
-	body += "</head>\r\n"
-
-	body += "<h1>Error response</h1>\r\n"
-	body += "<p>Error code: 500</p>\r\n"
-	body += "<p>Message: Internal Server Error</p>\r\n"
-	body += "<body>\r\n"
-	body += "</body>\r\n"
-	body += "</html>\r\n"
-	log.Printf("\r\n%s", []byte(body))
-	res.SetBody([]byte(body))
-	res.SetProtocol(protocol)
-	res.SetStatus(int(p.INTERNAL_SERVER_ERROR_CODE), string(p.INTERNAL_SERVER_ERROR_TEXT))
+	res.SetStatus(sCode)
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
