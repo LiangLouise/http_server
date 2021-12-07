@@ -298,16 +298,15 @@ func onErrorHandler(res httpParser.Response, sCode p.HTTP_STATUS_CODE) (response
 	body += "<head>\r\n"
 	body += "<title>Error response</title>\r\n"
 	body += "</head>\r\n"
-
 	body += "<h1>Error response</h1>\r\n"
-	body += "<p>Error code: 404</p>\r\n"
-	body += "<p>Message: File not found.</p>\r\n"
+	body += "<p>Error code: " + strconv.Itoa(int(sCode)) + "</p>\r\n"
+	res.SetStatus(sCode)
+	body += "<p>Message: " + string(res.StatusText) + ".</p>\r\n"
 	body += "<body>\r\n"
 	body += "</body>\r\n"
 	body += "</html>\r\n"
 	log.Printf("\r\n%s", []byte(body))
 	res.SetBody([]byte(body))
-	res.SetStatus(sCode)
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.Itoa(len(body)))

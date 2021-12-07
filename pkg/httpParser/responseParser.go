@@ -10,7 +10,7 @@ import (
 
 type Response struct {
 	statusCode p.HTTP_STATUS_CODE
-	statusText p.HTTP_STATUS_TEXT
+	StatusText p.HTTP_STATUS_TEXT
 	header     textproto.MIMEHeader
 	body       []byte
 	protocol   p.HTTP_PROTOCOL_VERSION // "HTTP/1.1"
@@ -38,7 +38,7 @@ func (res *Response) SetStatus(statusCode p.HTTP_STATUS_CODE) {
 		sText = p.INTERNAL_SERVER_ERROR_TEXT
 	}
 	res.statusCode = statusCode
-	res.statusText = sText
+	res.StatusText = sText
 }
 
 func (res *Response) AddHeader(key, value string) {
@@ -60,7 +60,7 @@ func (res *Response) SetProtocol(protocol p.HTTP_PROTOCOL_VERSION) {
 func (res *Response) ParseResponse() string {
 	var resText string
 	var values string
-	resText += string(res.protocol) + " " + strconv.Itoa(int(res.statusCode)) + " " + string(res.statusText) + "\r\n"
+	resText += string(res.protocol) + " " + strconv.Itoa(int(res.statusCode)) + " " + string(res.StatusText) + "\r\n"
 	for k, v := range res.header {
 		values = ""
 		if len(v) > 1 {
