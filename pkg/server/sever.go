@@ -63,7 +63,9 @@ func (s *server) ListenRequest() {
 		c, err := s.Listener.Accept()
 		if err != nil {
 			select {
+			// Listner close and got shutdown signal
 			case <-s.quit:
+				// break the listener loop
 				return
 			default:
 				log.Println("accept error", err)
