@@ -174,5 +174,65 @@ $ ./bin/http1_server <./path_to_mainconfig.yml>
 
 ## Implementation Testing
 
-#### HTTP SERVER 1.0
+### HTTP SERVER 1.0
+
+To test conditional GET requests, we used [this repo](https://github.com/cloudacademy/static-website-example) as our test folder to performance various testing cases.
+
+#### Index.html is present in directory
+
+![index_present](imgs/index_present.png)
+
+#### Index.html is NOT present in directory
+
+![index_not_present](imgs/index_not_present.png)
+
+#### If-Modified-Since Request
+
+Below is the last modification date of the request source which is Dec. 6, 2021, 7:46 PM
+
+![last_mod](imgs/last_mod.png)
+
+Here is the result, we see that the server correctly return 304 status code if "If-Modified-Since" is after the last modification date. Otherwise, it returns the updated content
+
+![304](imgs/304.png)
+
+#### GET various file types
+
+Markdown:
+
+![md](imgs/md.png)
+
+JPG:
+
+![jpg](imgs/jpg.png)
+
+PNG:![png](imgs/png.png)
+
+CSS:
+
+![css](imgs/css.png)
+
+JS:
+
+![js](imgs/js.png)
+
+
+
+#### Send any request other than GET
+
+![405](imgs/405.png)
+
+### HTTP SERVER 1.1 With Persistence
+
+We can see from the first request is sent with header "Connection: keep-alive" so the second request reuses connection #0 without establishing a new connection.
+
+![Persistence_1](imgs/Persistence_1.png)
+
+![Persistence_2](imgs/Persistence_2.png)
+
+### HTTP SERVER 1.1 With Pipeline
+
+Here we sent two GET request at once and the server returns two response at the same time.
+
+![Pipeline](/Users/cheng/Desktop/Uni Stuff/Forth Year/2021 Fall/CSCD58/project/http_server/imgs/Pipeline.png)
 
