@@ -139,7 +139,7 @@ func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 	indexFile, err := fsService.TryOpenIndex(basePath)
 
 	// exist but failed to open, special status code is required
-	if !os.IsNotExist(err) {
+	if !os.IsNotExist(err) && err != nil {
 		// handle permission deny
 		if os.IsPermission(err) {
 			res = PermDenyHandler(res, protocol)
