@@ -1,3 +1,4 @@
+// API to create a new Server instance, run it and API to shut it down.
 package server
 
 import (
@@ -18,15 +19,21 @@ type Server interface {
 	ShutDown()
 }
 
+// This struct contains the info and variables
+// server needs to serve the content
 type server struct {
 	Address  string
 	Port     string
 	Protocol httpProto.HTTP_PROTOCOL_VERSION
+	// TCP Sever to Listen new connections
 	Listener net.Listener
-	Wg       sync.WaitGroup
-	quit     chan interface{}
-	fs       *fsService.FsService
-	config   *config.ServerConfig
+	// Waitgroup to ensure all handler go routines to be shut
+	// down before shuting down server itself
+	Wg sync.WaitGroup
+	// Dummy channel to send shutdown signal to handler
+	quit   chan interface{}
+	fs     *fsService.FsService
+	config *config.ServerConfig
 }
 
 func MakeServer(config *config.ServerConfig, fs *fsService.FsService) (s *server, err error) {
@@ -57,6 +64,13 @@ func MakeServer(config *config.ServerConfig, fs *fsService.FsService) (s *server
 	return s, nil
 }
 
+// Start the new server
+//
+// Create an infinite loop and try to listen New TCP connection as many as it can
+// Until reach MAX_CONCURRENT_CONNECTIONS
+// The listening loop will be broken by calling
+// 	server.ShutDown()
+// to signal a shutdown
 func (s *server) ListenRequest() {
 	for {
 
@@ -83,6 +97,10 @@ func (s *server) ListenRequest() {
 	}
 }
 
+// Signal to shut down the server.
+//
+// This will let sever stop listening new TCP connection
+// and try to close all existing connections.
 func (s *server) ShutDown() {
 	close(s.quit)
 	// Decrease the main server thread waiting

@@ -14,6 +14,7 @@ import (
 
 func main() {
 
+	// Channel to capture the ctrl+C, the stop signal
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
@@ -38,12 +39,13 @@ func main() {
 		log.Fatalf("listen: %s\n", err)
 	}
 
-	go func() {
-		s.ListenRequest()
-	}()
+	log.Printf("Server now listen at: %s:%s\n", s.Address, s.Port)
+
+	// Start to listen new requests
+	go s.ListenRequest()
 
 	<-done
-	log.Print("Server Stopped")
+	log.Print("Start to stop server")
 	s.ShutDown()
 	log.Print("Server Exited Properly")
 }

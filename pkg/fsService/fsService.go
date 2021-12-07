@@ -1,3 +1,6 @@
+// Support services to help manipulate file in the host machines
+// FsService will clean the path before opening it, in case
+// user sends bad path to read content not being served by server
 package fsService
 
 import (
@@ -9,6 +12,7 @@ import (
 )
 
 type FsService struct {
+	// The current working directory of the server
 	CWD string
 }
 

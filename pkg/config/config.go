@@ -1,3 +1,4 @@
+// Utils to load configurations for server from yaml file
 package config
 
 import (
@@ -23,6 +24,7 @@ type ServerConfig struct {
 	} `yaml:"RunTime"`
 }
 
+// function to parse the config data from config yaml file
 func LoadConfig(path string) (config *ServerConfig, err error) {
 	f, err := os.Open(path)
 	if err != nil {
