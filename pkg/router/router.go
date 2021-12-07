@@ -139,7 +139,7 @@ func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 	indexFile, err := fsService.TryOpenIndex(basePath)
 
 	// exist but failed to open, special status code is required
-	if !os.IsNotExist(err) {
+	if !os.IsNotExist(err) && err != nil {
 		// handle permission deny
 		if os.IsPermission(err) {
 			res = PermDenyHandler(res, protocol)
@@ -209,6 +209,8 @@ func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCO
 	mtype, err := mimetype.DetectReader(file)
 	if err != nil {
 		log.Printf("FileHandler: %s", err)
+		res = InternalErrHandler(res, protocol)
+		return res
 	}
 	file.Seek(0, io.SeekStart)
 
@@ -216,6 +218,8 @@ func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCO
 	size, err := io.Copy(buf, file)
 	if err != nil {
 		log.Printf("FileHandler: %s", err)
+		res = InternalErrHandler(res, protocol)
+		return res
 	}
 	body := buf.Bytes()
 
@@ -264,10 +268,14 @@ func IfModSinceHandler(t string, res httpParser.Response, file *os.File, isDir b
 	IfModSince, err := time.Parse(time.RFC1123, t)
 	if err != nil {
 		log.Printf("Cannot parse date: %s", err)
+		res = PermDenyHandler(res, protocol)
+		return res
 	}
 	fileinfo, err := os.Stat(file.Name())
 	if err != nil {
 		log.Printf("Cannot get file info: %s", err)
+		res = PermDenyHandler(res, protocol)
+		return res
 	}
 	LastModTime := fileinfo.ModTime()
 	updated := LastModTime.After(IfModSince)
@@ -340,6 +348,28 @@ func InvalidMethodHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERS
 	res.SetBody([]byte(body))
 	res.SetProtocol(protocol)
 	res.SetStatus(int(p.METHOD_NOT_ALLOWED_CODE), string(p.METHOD_NOT_ALLOWED_TEXT))
+	res.AddHeader("Content-Type", "text.html")
+	res.AddHeader("Content-Type", "charset=utf-8")
+	res.AddHeader("Content-Length", strconv.Itoa(len(body)))
+	return res
+}
+
+func InternalErrHandler(res httpParser.Response, protocol p.HTTP_PROTOCOL_VERSION) (response httpParser.Response) {
+	body := "<html>\r\n"
+	body += "<head>\r\n"
+	body += "<title>Error response</title>\r\n"
+	body += "</head>\r\n"
+
+	body += "<h1>Error response</h1>\r\n"
+	body += "<p>Error code: 500</p>\r\n"
+	body += "<p>Message: Internal Server Error</p>\r\n"
+	body += "<body>\r\n"
+	body += "</body>\r\n"
+	body += "</html>\r\n"
+	log.Printf("\r\n%s", []byte(body))
+	res.SetBody([]byte(body))
+	res.SetProtocol(protocol)
+	res.SetStatus(int(p.INTERNAL_SERVER_ERROR_CODE), string(p.INTERNAL_SERVER_ERROR_TEXT))
 	res.AddHeader("Content-Type", "text.html")
 	res.AddHeader("Content-Type", "charset=utf-8")
 	res.AddHeader("Content-Length", strconv.Itoa(len(body)))

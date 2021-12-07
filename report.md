@@ -121,6 +121,7 @@ When it's time to shutdown the server, server will stop listening new TCP connec
   - Implementation of `httpProto.go` (http protocol part)
   - Helped in debugging the `router.go` and the `requestParser.go`
   - Designed workflow
+  - Created Makefile
 - Cheng
   - Full implementation of `requestParser.go`
   - Full implementation of `responseParser.go`
@@ -172,3 +173,6 @@ $ ./bin/http1_server <./path_to_mainconfig.yml>
 
 
 ## Implementation Testing
+
+#### HTTP SERVER 1.0
+
