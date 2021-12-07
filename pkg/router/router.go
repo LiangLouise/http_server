@@ -21,6 +21,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"strconv"
@@ -183,8 +184,8 @@ func dirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 				fileName += "/"
 			}
 			body += "<li><a href=\"" + fileName + "\">" + fileName + "</a></li>\r\n"
-
 		}
+
 		body += "</ul>\r\n"
 		body += "<hr>\r\n"
 		body += "<body>\r\n"
@@ -215,14 +216,35 @@ func fileHandler(res httpParser.Response, file *os.File) (response httpParser.Re
 	// close file after use
 	defer file.Close()
 
-	// Detect file Mime Type
-	mtype, err := mimetype.DetectReader(file)
+	fileinfo, err := os.Stat(file.Name())
 	if err != nil {
-		log.Printf("FileHandler: %s", err)
-		res = onErrorHandler(res, p.INTERNAL_SERVER_ERROR_CODE)
+		log.Printf("Cannot get file info: %s", err)
+		res = onErrorHandler(res, p.FORBIDDEN_CODE)
 		return res
 	}
-	file.Seek(0, io.SeekStart)
+
+	name := fileinfo.Name()
+	var mime string
+
+	// Since either golang builtin mime detector and mime library
+	// unable to tell if a text file is a js or css file, we need
+	// to manually check the file extenstion
+	if strings.HasSuffix(name, ".js") {
+		mime = "application/javascript"
+	} else if strings.HasSuffix(name, ".css") {
+		mime = "text/css"
+	} else {
+		// Detect file Mime Type
+		mtype, err := mimetype.DetectReader(file)
+		if err != nil {
+			log.Printf("FileHandler: %s", err)
+			res = onErrorHandler(res, p.INTERNAL_SERVER_ERROR_CODE)
+			return res
+		}
+		// Reset cursor
+		file.Seek(0, io.SeekStart)
+		mime = mtype.String()
+	}
 
 	buf := bytes.NewBuffer(nil)
 	size, err := io.Copy(buf, file)
@@ -236,12 +258,8 @@ func fileHandler(res httpParser.Response, file *os.File) (response httpParser.Re
 	res.SetBody(body)
 	res.SetStatus(p.OK_CODE)
 
-	res.AddHeader("Content-Type", mtype.String())
+	res.AddHeader("Content-Type", mime)
 	res.AddHeader("Content-Length", strconv.FormatInt(size, 10))
-	fileinfo, err := os.Stat(file.Name())
-	if err != nil {
-		log.Printf("Cannot get file info: %s", err)
-	}
 	LastModTime := fileinfo.ModTime()
 	res.SetHeader("Last-Modified", LastModTime.Format(time.RFC1123))
 	return res
