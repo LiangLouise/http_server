@@ -191,7 +191,7 @@ func DirHandler(res httpParser.Response, basePath string, dir *os.File, uri stri
 			log.Printf("Cannot get file info: %s", err)
 		}
 		LastModTime := fileinfo.ModTime()
-		res.SetHeader("Last-Modified", LastModTime.Format("01-02-2006 15:04:05"))
+		res.SetHeader("Last-Modified", LastModTime.Format(time.RFC1123))
 		return res
 	} else {
 		return FileHandler(res, indexFile, protocol)
@@ -223,7 +223,7 @@ func FileHandler(res httpParser.Response, file *os.File, protocol p.HTTP_PROTOCO
 		log.Printf("Cannot get file info: %s", err)
 	}
 	LastModTime := fileinfo.ModTime()
-	res.SetHeader("Last-Modified", LastModTime.Format("01-02-2006 15:04:05"))
+	res.SetHeader("Last-Modified", LastModTime.Format(time.RFC1123))
 	return res
 }
 
